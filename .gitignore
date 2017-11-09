@@ -12,3 +12,4 @@ NeuralNetworkEngine/x64/Debug/Layer.obj
 *.lastbuildstate
 *.log
 *.pch
+*.enc

@@ -37,7 +37,8 @@ void Convolutional::connect(Layer * prevLyr, unsigned int winSideLen, unsigned i
 		n++;
 	} while (i < prevLyr->lyrCols + padding * 2);
 
-	this->activations = Matrix((prevLyr->lyrRows + padding*2 - winSideLen)/stride, (prevLyr->lyrCols + padding * 2 - winSideLen) / stride);
+	//this->activations = Matrix((prevLyr->lyrRows + padding*2 - winSideLen)/stride, (prevLyr->lyrCols + padding * 2 - winSideLen) / stride);
+	this->activations = Matrix((prevLyr->lyrRows  - winSideLen) / stride , (prevLyr->lyrCols  - winSideLen) / stride);
 
 	//this->inputs = prevLyr->activations.block(0, 0, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
 }
@@ -83,8 +84,8 @@ void Convolutional::backProp()
 			e = prevLyr->activations.block(f,g, c, d);
 			inputz.block(a, b, c, d) = e;
 			cout << inputz << endl;
-			this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
-			weightFaults += inputs.transpose() * (activations(i, j)) ;
+			//this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
+			weightFaults += (inputz.reshape(winSideLen * winSideLen, 1)).transpose() * (activations(i, j)) ;
 			//this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
 			//this->inputs += weights.transpose()* activations.reshape(winSideLen*winSideLen, 1);
 		}
@@ -100,12 +101,55 @@ void Convolutional::backProp()
 
 void Convolutional::feedFwd()
 {
-	Matrix_pr a;
+	Matrix inputz(winSideLen * winSideLen, 1);
+	unsigned int a, b, c, d, f, g;
+	Matrix e;
+
 	for (int i = 0; i < activations.rows; i++) {
 		for (int j = 0; j < activations.cols; j++) {
-			a = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
-			this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1); 
-			this->activations(i, j) += (weights * inputs).data[0];
+			inputz = Matrix(winSideLen, winSideLen);
+			c = winSideLen;
+			d = winSideLen;
+			if (i*stride < padding) {
+				a = padding - i*stride;
+				c -= a;
+				f = 0;
+			}
+			else {
+				a = 0;
+				f = (i - padding)*stride;
+			}
+			if (j*stride < padding) {
+				b = padding - j*stride;
+				d -= b;
+				g = 0;
+			}
+			else {
+				b = 0;
+				g = (j - padding)*stride;
+			}
+			if (i*stride + winSideLen > prevLyr->lyrRows + padding) {
+				c -= (i*stride + winSideLen - prevLyr->lyrRows + padding);
+			}
+			if (j*stride + winSideLen > prevLyr->lyrRows + padding) {
+				d -= (j*stride + winSideLen - prevLyr->lyrRows + padding);
+			}
+			e = Matrix(c, d);
+			e = prevLyr->activations.block(f, g, c, d);
+			inputz.block(a, b, c, d) = e;
+			cout << inputz << endl;
+			//this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
+			weightFaults += (inputz.reshape(winSideLen * winSideLen, 1)).transpose() * (activations(i, j));
+			this->activations(i, j) += (weights * inputz).data[0];
 		}
 	}
+
+
+	//for (int i = 0; i < activations.rows; i++) {
+	//	for (int j = 0; j < activations.cols; j++) {
+	//		//a = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
+	//		this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1); 
+	//		this->activations(i, j) += (weights * inputs).data[0];
+	//	}
+	//}
 }
