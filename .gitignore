@@ -1,5 +1,8 @@
 NeuralNetworkEngine.VC.db
 NeuralNetworkEngine.sln
+NeuralNetworkEngine/Debug/
+NeuralNetworkEngine/x64/
+x64/
 x64/Debug/NeuralNetworkEngine.exe
 *.ilk
 x64/Debug/NeuralNetworkEngine.pdb
