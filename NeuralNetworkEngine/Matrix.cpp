@@ -70,7 +70,7 @@ Matrix& Matrix::operator=(const Matrix_pr& mat) {
 }
 
 Matrix& Matrix::operator+=(const Matrix mat) {
-	int i, ii;
+	unsigned int i, ii;
 	if (this->rows != mat.rows || this->cols != mat.cols) {
 		throw std::out_of_range("dimension mismatch");
 	}

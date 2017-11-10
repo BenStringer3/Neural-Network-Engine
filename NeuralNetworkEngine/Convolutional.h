@@ -9,6 +9,7 @@ public:
 	void connect(Layer * prevLyr, unsigned int input2WinRatio, unsigned int prevLyr2ThisLyrRatio);
 	void feedFwd();
 	void backProp();
+	void setWeights(const Matrix & mat);
 private:
 	unsigned int padding;
 	//only one receiving neuron 

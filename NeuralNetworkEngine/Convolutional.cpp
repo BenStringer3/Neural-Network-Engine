@@ -100,6 +100,11 @@ void Convolutional::backProp()
 	weights.reshape(1, winSideLen * winSideLen) -= weightFaults;
 }
 
+void Convolutional::setWeights(const Matrix & mat)
+{
+	this->weights = mat;
+}
+
 void Convolutional::feedFwd()
 {
 	int in_i, in_j, win_i, win_j, blokWin_i, blokWin_j, blokWin_height, blokWin_width, in_height, in_width;

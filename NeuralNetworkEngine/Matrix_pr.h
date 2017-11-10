@@ -44,7 +44,7 @@ public:
 
 		friend std::ostream& operator<<(std::ostream& os, const Matrix_pr& mat)
 		{
-			int i, ii;
+			unsigned int i, ii;
 			for (i = 0; i < mat.rows; i++) {
 				for (ii = 0; ii < mat.cols; ii++) {
 					os << *mat.data[i*mat.cols + ii] << "  ";

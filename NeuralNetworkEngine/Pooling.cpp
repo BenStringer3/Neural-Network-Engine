@@ -64,9 +64,7 @@ void Pooling::feedFwd()
 			//this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
 			switch (poolingType) {
 			case Max:
-				cout << prevLyr->activations << endl;
 				this->activations(i, j) += (prevLyr->activations.block(in_i, in_j, blokWin_height, blokWin_width)).max();
-				cout << this->activations(i, j) << endl;
 				break;
 			case Avg:
 				this->activations(i, j) += (prevLyr->activations.block(in_i, in_j, blokWin_height, blokWin_width)).avg();

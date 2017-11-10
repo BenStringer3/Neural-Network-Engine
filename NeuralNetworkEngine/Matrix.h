@@ -54,7 +54,7 @@ public:
 
 	friend Matrix operator*(const double scalar, const Matrix& mat)
 	{
-		int i, ii;
+		unsigned int i, ii;
 		Matrix result = mat;
 		for (i = 0; i < mat.rows; i++) {
 			for (ii = 0; ii < mat.cols; ii++) {

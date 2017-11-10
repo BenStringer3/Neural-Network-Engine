@@ -28,7 +28,7 @@ void MLP::connect(Layer * prevLyr)
 }
 
 void MLP::feedFwd() {
-	this->z = weights * inputs + biases;
+	this->z = (weights * inputs).reshape(lyrRows, lyrCols) + biases;
 	this->activations = sig(&z).reshape(this->lyrRows, this->lyrCols);
 }
 
@@ -37,7 +37,7 @@ void MLP::backProp() {
 	Matrix dels;
 
 	if (outputConnected) {
-		dels = (this->activations.reshape(this->lyrRows * this->lyrCols, 1)).cwiseProduct(sig_prime(&z));
+		dels = (this->activations.reshape(this->lyrRows * this->lyrCols, 1)).cwiseProduct((sig_prime(&z)).reshape(this->lyrRows * this->lyrCols, 1));
 	}
 	else {
 		dels = (this->activations.reshape(this->lyrRows * this->lyrCols, 1));
@@ -47,15 +47,15 @@ void MLP::backProp() {
 	this->inputs = weights.transpose() * dels;
 
 	weights -= weightFaults;
-	biases -= dels;
+	biases -= dels.reshape(lyrRows, lyrCols);
 }
 
 Matrix MLP::sig(Matrix *x) {
-	Matrix ones = Matrix::ones(x->cols*x->rows, 1);
+	Matrix ones = Matrix::ones(x->rows, x->cols);
 	return ones.cwiseQuotient((ones + (-1.0 * (*x)).exp()));
 }
 
 Matrix MLP::sig_prime(Matrix *x) {
 	Matrix tmp = sig(x);
-	return tmp.cwiseProduct(Matrix::ones(x->rows, 1) - tmp);
+	return tmp.cwiseProduct(Matrix::ones(x->rows, x->cols) - tmp);
 }
