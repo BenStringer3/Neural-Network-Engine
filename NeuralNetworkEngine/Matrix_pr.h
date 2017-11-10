@@ -67,6 +67,8 @@ public:
 		void maxLocation(unsigned int & row, unsigned int & col);
 
 		double avg();
+
+		void assign(const Matrix_pr & mat);
 };
 
 

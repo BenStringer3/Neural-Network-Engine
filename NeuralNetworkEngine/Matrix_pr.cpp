@@ -204,3 +204,13 @@ double  Matrix_pr::avg()
 	}
 	return accum / data.size();
 }
+
+void Matrix_pr::assign(const Matrix_pr & mat) {
+	if (this->rows != mat.rows || this->cols != mat.cols) {
+		throw std::out_of_range("dimension mismatch");
+	}
+	for (int i = 0; i < this->data.size(); i++) {
+		*this->data[i] = *mat.data[i];
+	}
+	
+}

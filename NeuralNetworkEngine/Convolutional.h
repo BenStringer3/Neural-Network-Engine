@@ -6,7 +6,7 @@ class Convolutional :
 public:
 	Convolutional();
 	~Convolutional();
-	void connect(Layer * prevLyr, unsigned int winSideLen, unsigned int stride);
+	void connect(Layer * prevLyr, unsigned int input2WinRatio, unsigned int prevLyr2ThisLyrRatio);
 	void feedFwd();
 	void backProp();
 private:

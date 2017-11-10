@@ -17,16 +17,18 @@ using namespace std;
 
 int main()
 {
-	MLP input(12, 12);
+	MLP input(5,5);
 	Convolutional conv1;
 	Pooling pool1(Max);
 
-	input.activations = Matrix::random(12, 12);
+	input.activations = Matrix::random(5, 5);
 
-	conv1.connect(&input, 3, 1);
+	conv1.connect(&input, 1, 2);
 	//pool1.connect(&conv1, 3, 3);
 
 	conv1.feedFwd();
+
+	conv1.activations = Matrix::ones(conv1.lyrRows, conv1.lyrCols);
 
 	conv1.backProp();
 

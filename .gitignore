@@ -16,3 +16,6 @@ NeuralNetworkEngine/x64/Debug/Layer.obj
 *.log
 *.pch
 *.enc
+/.vs/NeuralNetworkEngine/v14/.suo
+*.obj
+NeuralNetworkEngine/x64/Debug/Convolutional.obj
