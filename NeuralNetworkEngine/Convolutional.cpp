@@ -14,7 +14,7 @@ Convolutional::~Convolutional()
 
 void Convolutional::connect(Layer * prevLyr, unsigned int input2WinRatio, unsigned int prevLyr2ThisLyrRatio)
 {
-	unsigned int i = 0, m = 1, n = 1;
+	unsigned int i = 0;
 
 
 	this->prevLyr = prevLyr;
@@ -105,9 +105,6 @@ void Convolutional::feedFwd()
 	int in_i, in_j, win_i, win_j, blokWin_i, blokWin_j, blokWin_height, blokWin_width, in_height, in_width;
 	Matrix window(winSideLen , winSideLen);
 	Matrix tmp;
-
-	cout << this->weights << endl;
-	cout << prevLyr->activations << endl;
 
 	in_height = prevLyr->lyrRows;
 	in_width = prevLyr->lyrCols;

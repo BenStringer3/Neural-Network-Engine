@@ -176,7 +176,7 @@ double & Matrix_pr::max()
 {
 	unsigned int maxLocation = 0;
 	for (int i = 0; i < this->data.size(); i++) {
-		if (data[i] > data[maxLocation]) {
+		if (*data[i] > *data[maxLocation]) {
 			maxLocation = i;
 		}
 	}
@@ -188,7 +188,7 @@ void Matrix_pr::maxLocation(unsigned int & row, unsigned int & col)
 	row = 0; col = 0;
 	for (int i = 0; i < this->rows; i++) {
 		for (int j = 0; j < this->cols; j++) {
-			if (this->data[i*cols +j] > this->data[row*cols + col]) {
+			if (*this->data[i*cols +j] > *this->data[row*cols + col]) {
 				row = i;
 				col = j;
 			}

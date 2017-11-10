@@ -17,19 +17,20 @@ using namespace std;
 
 int main()
 {
-	MLP input(5,5);
+	MLP input(10,10);
 	Convolutional conv1;
 	Pooling pool1(Max);
 
-	input.activations = Matrix::random(5, 5);
+	input.activations = Matrix::random(10, 10);
 
 	conv1.connect(&input, 1, 2);
-	//pool1.connect(&conv1, 3, 3);
+	pool1.connect(&conv1, 1, 2);
 
 	conv1.feedFwd();
+	pool1.feedFwd();
 
-	conv1.activations = Matrix::ones(conv1.lyrRows, conv1.lyrCols);
-
+	pool1.activations = Matrix::ones(pool1.lyrRows, pool1.lyrCols);
+	pool1.backProp();
 	conv1.backProp();
 
 	//double inputBatch[4][2] = { 0, 0, 0, 1, 1, 0,1,1 };
