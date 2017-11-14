@@ -21,5 +21,6 @@ private:
 	unsigned int stride;
 	PoolingType poolingType;
 	Layer * prevLyr;
+	Matrix zerosPadding;
 };
 

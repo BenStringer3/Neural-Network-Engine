@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "Convolutional.h"
 
+#define FLIP 0
 
 Convolutional::Convolutional()
 {
@@ -26,26 +27,79 @@ void Convolutional::connect(Layer * prevLyr, unsigned int input2WinRatio, unsign
 	}
 	this->stride = prevLyr2ThisLyrRatio;
 
-	padding = floor(winSideLen / 2);
+	padding = (unsigned int)floor(winSideLen / 2);
 
 	this->weights = Matrix::random(1, winSideLen*winSideLen);
 	this->weightFaults = Matrix(1, winSideLen*winSideLen);
 
 
-	this->lyrRows = floor((prevLyr->lyrRows + padding * 2 - winSideLen + 1) / stride) + 1 ;
-	this->lyrCols = floor((prevLyr->lyrCols + padding * 2 - winSideLen + 1) / stride) + 1;
+	this->lyrRows = (unsigned int)floor((prevLyr->lyrRows + padding * 2 - winSideLen) / stride) + 1 ;
+	this->lyrCols = (unsigned int)floor((prevLyr->lyrCols + padding * 2 - winSideLen) / stride) + 1;
 	this->activations = Matrix(lyrRows, lyrCols);
 	//this->activations = Matrix((prevLyr->lyrRows  - winSideLen) / stride , (prevLyr->lyrCols  - winSideLen) / stride);
 	
+	zerosPadding = Matrix(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
+	inputs = Matrix_pr(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
+	inputs.pointTo(zerosPadding);
+	//(inputs.block(padding , padding , prevLyr->lyrRows, prevLyr->lyrCols)).pointTo(prevLyr->activations);
+	for (int i = padding; i < prevLyr->lyrRows + padding; i++) {
+		for (int j = padding; j < prevLyr->lyrCols + padding; j++) {
+			inputs.data[i*inputs.cols + j] = &prevLyr->activations.data[(i - padding)*prevLyr->lyrCols + j - padding];
+		}
+	}
 }
 
+#if ~FLIP
+void Convolutional::backProp()
+{
+	unsigned int i, j;
+	//Matrix zeros(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
+	//Matrix_pr newInput(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
+	Matrix weightFaults(weights.rows, weights.cols);
+	//newInput.pointTo(zeros);
+	//(newInput.block(padding - 1, padding - 1, prevLyr->lyrRows, prevLyr->lyrCols)).pointTo(prevLyr->activations);
+
+	//newInput.block(padding - 1, padding - 1, prevLyr->lyrRows, prevLyr->lyrCols) = prevLyr->activations;
+	for (i = 0; i < activations.rows; i++) {
+		for (j = 0; j < activations.cols; j++) {
+			weightFaults += (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(1, winSideLen* winSideLen) * (activations(i, j));
+		}
+	}
+	for (i = 0; i < activations.rows; i++) {
+		for (j = 0; j < activations.cols; j++) {
+			(inputs.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(winSideLen * winSideLen, 1) += weights.transpose() * (activations(i, j));
+		}
+	}
+	zerosPadding *= 0;
+	weights.reshape(1, winSideLen * winSideLen) -= weightFaults;
+}
+
+void Convolutional::feedFwd() {
+	unsigned int i, j;
+	//Matrix zeros(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
+	//Matrix_pr newInput(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
+	//newInput.pointTo(zeros);
+	//(newInput.block(padding - 1, padding - 1, prevLyr->lyrRows, prevLyr->lyrCols)).pointTo(prevLyr->activations);
+	for (i = 0; i < activations.rows; i++) {
+		for (j = 0; j < activations.cols; j++) {
+			//window.block(blokWin_i, blokWin_j, blokWin_height, blokWin_width).assign(prevLyr->activations.block(in_i, in_j, blokWin_height, blokWin_width));
+
+			//window.reshape(winSideLen* winSideLen, 1);
+			//cout << inputs.block(i*stride, j*stride, winSideLen, winSideLen) << endl;
+			this->activations(i, j) += (weights * (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(winSideLen* winSideLen, 1)).data[0];
+		}
+	}
+}
+#endif
+
+#if FLIP
 void Convolutional::backProp()
 {
 	Matrix weightFaults(weights.rows, weights.cols);
-	int i, j;
+	unsigned int i, j;
 	int in_i, in_j, win_i, win_j, blokWin_i, blokWin_j, blokWin_height, blokWin_width, in_height, in_width;
 	Matrix window(winSideLen, winSideLen);
-	Matrix tmp;
+	//Matrix tmp;
 
 	in_height = prevLyr->lyrRows;
 	in_width = prevLyr->lyrCols;
@@ -67,13 +121,13 @@ void Convolutional::backProp()
 			if (win_j + winSideLen > in_width + padding) {
 				blokWin_width -= (win_j + winSideLen - padding - in_width);
 			}
-			window = Matrix(winSideLen, winSideLen);
+			window *= 0;// Matrix(winSideLen, winSideLen);
 			window.block(blokWin_i, blokWin_j, blokWin_height, blokWin_width).assign(prevLyr->activations.block(in_i, in_j, blokWin_height, blokWin_width));
-			window.reshape(winSideLen* winSideLen, 1);
-			weightFaults += window.transpose() * (activations(i, j));
+			
+			weightFaults += window.reshape(1, winSideLen* winSideLen) * (activations(i, j));
 		}
 	}
-	prevLyr->activations = Matrix(prevLyr->lyrRows, prevLyr->lyrCols);
+	prevLyr->activations *= 0;// Matrix(prevLyr->lyrRows, prevLyr->lyrCols);
 	for (i = 0; i < activations.rows; i++) {
 		for (j = 0; j < activations.cols; j++) {
 			blokWin_height = winSideLen;
@@ -92,29 +146,25 @@ void Convolutional::backProp()
 			if (win_j + winSideLen > in_width + padding) {
 				blokWin_width -= (win_j + winSideLen - padding - in_width);
 			}
-			tmp = Matrix(blokWin_height, blokWin_width);
-			tmp = (weights.reshape(winSideLen, winSideLen)).block(blokWin_i, blokWin_j, blokWin_height, blokWin_width);
-			(prevLyr->activations.block(in_i, in_j, blokWin_height, blokWin_width)).reshape(blokWin_height * blokWin_width, 1) += tmp.reshape(blokWin_height * blokWin_width, 1) * (activations(i, j));
+			//tmp = Matrix(blokWin_height, blokWin_width);
+			//tmp = (weights.reshape(winSideLen, winSideLen)).block(blokWin_i, blokWin_j, blokWin_height, blokWin_width);
+			(prevLyr->activations.block(in_i, in_j, blokWin_height, blokWin_width)).reshape(blokWin_height * blokWin_width, 1) += ((weights.reshape(winSideLen, winSideLen)).block(blokWin_i, blokWin_j, blokWin_height, blokWin_width)).reshape(blokWin_height * blokWin_width, 1) * (activations(i, j));
 		}
 	}
 	weights.reshape(1, winSideLen * winSideLen) -= weightFaults;
 }
 
-void Convolutional::setWeights(const Matrix & mat)
-{
-	this->weights = mat;
-}
+
 
 void Convolutional::feedFwd()
 {
 	int in_i, in_j, win_i, win_j, blokWin_i, blokWin_j, blokWin_height, blokWin_width, in_height, in_width;
 	Matrix window(winSideLen , winSideLen);
-	Matrix tmp;
-
+	unsigned int i, j;
 	in_height = prevLyr->lyrRows;
 	in_width = prevLyr->lyrCols;
-	for (int i = 0; i < activations.rows; i++) {
-		for (int j = 0; j < activations.cols; j++) {
+	for (i = 0; i < activations.rows; i++) {
+		for ( j = 0; j < activations.cols; j++) {
 			blokWin_height = winSideLen;
 			blokWin_width = winSideLen;
 			blokWin_i = 0;
@@ -131,14 +181,20 @@ void Convolutional::feedFwd()
 			if (win_j + winSideLen > in_width + padding) {
 				blokWin_width -= (win_j + winSideLen - padding - in_width);
 			}
-			window = Matrix(winSideLen, winSideLen);
+			window *= 0;//ss Matrix(winSideLen, winSideLen);
 			window.block(blokWin_i, blokWin_j, blokWin_height, blokWin_width).assign(prevLyr->activations.block( in_i, in_j, blokWin_height, blokWin_width));
-			cout << window << endl;
-			window.reshape(winSideLen* winSideLen, 1);
-			cout << window << endl;
-			this->activations(i, j) += (weights * window).data[0];
+
+			//window.reshape(winSideLen* winSideLen, 1);
+
+			this->activations(i, j) += (weights * window.reshape(winSideLen* winSideLen, 1)).data[0];
 		}
 	}
+}
+#endif
+
+void Convolutional::setWeights(const Matrix & mat)
+{
+	this->weights = mat;
 }
 
 //void Convolutional::backProp()

@@ -31,6 +31,16 @@ typedef struct MatrixSendMsg {
 		m = 'm';
 	}
 };
+
+typedef struct FitnessSendMsg {
+	char b;
+	uint32_t batchNum;
+	double fitness;
+	FitnessSendMsg() {
+		b = 'b';
+		batchNum = 0;
+	}
+};
 #pragma pack(pop)
 
 int main()
@@ -39,28 +49,33 @@ int main()
 	MLP input(IMG_DIM, IMG_DIM);
 	Convolutional conv1;
 	Pooling pool1(Max);
+	Convolutional conv2;
+	Pooling pool2(Max);
 	MLP classification1(5, 5);
 	MLP classification2(NUM_OUTS, 1);
 
 	//server stuff
 	Matrix buffy(NUM_OUTS, 1);
 	MatrixSendMsg matSndMsg[1];
+	FitnessSendMsg fitSndMsg[1];
 	uint32_t trainingDataSizeMsg[1];
 	size_t msgSize = 0;
 	char msgHeader[1];
+	char x[1] = { 'x' };
 	bool exitFlag = false;
 	boost::asio::io_service io_service;
 	boost::asio::ip::tcp::acceptor acceptor(io_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 4012));
 	boost::asio::ip::tcp::socket socket(io_service);
 
+	input.activations = Matrix::random(input.activations.rows, input.activations.cols);
 
-
-
-
-	//input.activations = Matrix::random(10, 10);
-	conv1.connect(&input, 10, 2);
-	pool1.connect(&conv1, 10, 2);
+	//connect the network
+	conv1.connect(&input, 5, 2);
+	pool1.connect(&conv1, 5, 2);
+	//conv2.connect(&input, 3, 2);
+	//pool2.connect(&conv2, 3, 2);
 	classification1.connect(&pool1);
+	classification1.connect(&pool2);
 	classification2.connect(&classification1);
 
 	while (1) {
@@ -78,42 +93,56 @@ int main()
 				switch (*msgHeader) {
 					//training data
 				case 't':
-					cout << "Receiving training data" << endl;
-					std::cout << "Bytes available: " << (msgSize = socket.available()) << endl;
+					//cout << "Receiving training data" << endl;
+					//std::cout << "Bytes available: " << (msgSize = socket.available()) << endl;
 					//read(socket, boost::asio::buffer(trainingDataSizeMsg, sizeof(trainingDataSizeMsg)));
 					//std::cout << "batchSize: " << trainingDataSizeMsg << endl;
 
 					//read in the inputBatch data
 					read(socket, boost::asio::buffer(input.activations.data, IMG_SIZE * sizeof(double)));
-					cout << "read socket. now " << (msgSize = socket.available()) << " bytes available" << endl;
+					//cout << "read socket. now " << (msgSize = socket.available()) << " bytes available" << endl;
 
 					conv1.feedFwd();
 					pool1.feedFwd();
+					//conv2.feedFwd();
+					//pool2.feedFwd();
 					classification1.feedFwd();
 					classification2.feedFwd();
 
-					cout << pool1.activations << endl;
-					matSndMsg->rows = pool1.lyrRows;
-					matSndMsg->cols = pool1.lyrCols;
-
+					//cout << pool1.activations << endl;
+					matSndMsg->m = 'm';
+					matSndMsg->rows = classification2.lyrRows;
+					matSndMsg->cols = classification2.lyrCols;
 					write(socket, boost::asio::buffer(matSndMsg, sizeof(matSndMsg)));
-					write(socket, boost::asio::buffer(pool1.activations.data, pool1.activations.data.size() * sizeof(double) ));
+					write(socket, boost::asio::buffer(classification2.activations.data, classification2.activations.data.size() * sizeof(double) ));
+					
+					matSndMsg->rows = conv1.lyrRows;
+					matSndMsg->cols = conv1.lyrCols;
+					matSndMsg->m = 'r';
+					write(socket, boost::asio::buffer(matSndMsg, sizeof(matSndMsg)));
+					write(socket, boost::asio::buffer(conv1.activations.data, conv1.activations.data.size() * sizeof(double)));
 
 					read(socket, boost::asio::buffer(buffy.data, NUM_OUTS * sizeof(double)));
-					cout << "read socket. now " << (msgSize = socket.available()) << " bytes available" << endl;
+					//cout << "read socket. now " << (msgSize = socket.available()) << " bytes available" << endl;
 					classification2.activations -= buffy;
-					cout << classification2.activations << endl;
+					//cout << classification2.activations << endl;
+					fitSndMsg->fitness = 0;
+					for (int u = 0; u < classification2.activations.data.size(); u++) {
+						fitSndMsg->fitness += pow(classification2.activations(u), 2.0);
+					}
+					fitSndMsg->batchNum++;
+					write(socket, boost::asio::buffer(fitSndMsg, sizeof(fitSndMsg)));
 					classification2.backProp();
-					cout << "asd1f" << endl;
 					classification1.backProp();
-					cout << "asdf2" << endl;
 					pool1.backProp();
-					cout << "asdf3" << endl;
 					conv1.backProp();
-					cout << "asd4f" << endl;
+					//pool2.backProp();
+					//conv2.backProp();
 					break;
 				case 'x':
 					exitFlag = true;
+					write(socket, boost::asio::buffer(x, 1));
+					socket.close();
 					cout << "exiting" << endl;
 					break;
 				default:

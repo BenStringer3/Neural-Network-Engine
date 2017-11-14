@@ -18,5 +18,6 @@ private:
 	Matrix weights;
 	Matrix weightFaults;
 	Layer * prevLyr;
+	Matrix zerosPadding;
 };
 

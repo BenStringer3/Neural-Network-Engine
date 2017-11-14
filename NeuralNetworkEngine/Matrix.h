@@ -40,6 +40,8 @@ public:
 
 	Matrix& operator-=(const Matrix mat);
 
+	Matrix& operator-=(const Matrix_pr& mat);
+
 	Matrix operator-(const Matrix& mat) const;
 
 	Matrix operator*(const Matrix& mat) const;
@@ -66,7 +68,7 @@ public:
 
 	const Matrix block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width) const;
 
-	Matrix_pr block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width);
+	Matrix_pr block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width) ;
 
 	double& operator()(unsigned int r, unsigned int c);
 
@@ -79,7 +81,7 @@ public:
 	friend Matrix operator-(const Matrix& mat)
 	{
 		Matrix result = mat;
-		int i;
+		unsigned int i;
 		for (i = 0; i < mat.data.size(); i++) {
 			result.data[i] = result.data[i] * -1;
 		}
@@ -88,7 +90,7 @@ public:
 
 	friend std::ostream& operator<<(std::ostream& os, const Matrix& mat)
 	{
-		int i, ii;
+		unsigned int i, ii;
 		for (i = 0; i < mat.rows; i++) {
 			for (ii = 0; ii < mat.cols; ii++) {
 				os << mat(i, ii) << "  ";
@@ -112,6 +114,8 @@ public:
 
 	static Matrix horzcat(const Matrix& ls, const Matrix& rs);
 
+	static Matrix vertcat(const Matrix & ls, const Matrix & rs);
+
 	static Matrix fwd_sub(const Matrix& lower);
 
 	static Matrix bck_sub(const Matrix& upper);
@@ -122,5 +126,5 @@ public:
 
 	Matrix_pr diagonal();
 
-	Matrix& reshape(unsigned int rows, unsigned int cols);
+	Matrix_pr reshape(unsigned int rows, unsigned int cols);
 };

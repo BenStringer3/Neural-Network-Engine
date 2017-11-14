@@ -4,6 +4,8 @@
 #include "Matrix.h"
 #include <math.h>
 
+#define SAFETY_CHECKS 1
+
 #define RAND (-1 + ((double)rand() / RAND_MAX) * 2)
 
 Matrix::Matrix() {
@@ -93,6 +95,22 @@ Matrix& Matrix::operator-=(const Matrix mat) {
 		for (i = 0; i < this->rows; i++) {
 			for (ii = 0; ii < this->cols; ii++) {
 				this->data[i*this->cols + ii] -= mat.data[i*this->cols + ii];
+			}
+		}
+	}
+	return *this;
+}
+
+Matrix & Matrix::operator-=(const Matrix_pr & mat)
+{
+	int i, ii;
+	if (this->rows != mat.rows || this->cols != mat.cols) {
+		throw std::out_of_range("dimension mismatch");
+	}
+	else {
+		for (i = 0; i < this->rows; i++) {
+			for (ii = 0; ii < this->cols; ii++) {
+				this->data[i*this->cols + ii] -= *mat.data[i*this->cols + ii];
 			}
 		}
 	}
@@ -205,22 +223,24 @@ Matrix Matrix::operator/(const double scalar) const {
 }
 
 Matrix_pr Matrix::block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width) {
-	Matrix_pr result;
-	int i, ii;
+	Matrix_pr result(height, width);
+	unsigned int i, ii;
+#if SAFETY_CHECKS
 	if (height == 0 || width == 0) {
 		throw std::out_of_range("block must have non-zero height and width");
 	}
 	else if (startRow + height - 1 > rows || startCol + width - 1 > cols) {
 		throw std::out_of_range("block extends beyond matrix dimensions");
 	}
-	else {
-		result = Matrix_pr(height, width);
+#endif
+
+		//result = Matrix_pr(height, width);
 		for (i = startRow; i < startRow + height; i++) {
 			for (ii = startCol; ii < startCol + width; ii++) {
 				result.data[(i - startRow)*result.cols + ii - startCol] = &this->data[i*this->cols + ii];
 			}
 		}
-	}
+
 	return result;
 }
 
@@ -241,14 +261,18 @@ Matrix_pr Matrix::diagonal() {
 	return result;
 }
 
-Matrix& Matrix::reshape(unsigned int rows, unsigned int cols)
+Matrix_pr Matrix::reshape(unsigned int rows, unsigned int cols)
 {
+	Matrix_pr result(this->rows, this->cols);
+	result.pointTo( *this);
+#if SAFETY_CHECKS
 		if ((rows*cols != this->rows*this->cols)  && this->rows != 0 && this->cols != 0) {
 			throw std::out_of_range("Illegal reshape");
 		}
-		this->rows = rows;
-		this->cols = cols;
-		return *this;
+#endif
+		result.rows = rows;
+		result.cols = cols;
+		return result;
 }
 
 double& Matrix::operator()(unsigned int r, unsigned int c){
@@ -506,6 +530,27 @@ Matrix Matrix::horzcat(const Matrix& ls, const Matrix& rs) {
 				}
 				else {
 					result(i, ii) = rs(i, ii - ls.cols);
+				}
+			}
+		}
+	}
+	return result;
+}
+
+Matrix Matrix::vertcat(const Matrix& top, const Matrix& bot) {
+	Matrix result(top.rows + bot.rows, top.cols);
+	int i, ii;
+	if (top.cols != bot.cols) {
+		throw std::out_of_range("These matrices' col sizes don't match");
+	}
+	else {
+		for (i = 0; i < result.rows; i++) {
+			for (ii = 0; ii < result.cols; ii++) {
+				if (i < top.rows) {
+					result(i, ii) = top(i, ii);
+				}
+				else {
+					result(i, ii) = bot(i - top.rows, ii);
 				}
 			}
 		}

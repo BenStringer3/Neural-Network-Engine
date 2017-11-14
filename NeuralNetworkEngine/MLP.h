@@ -10,6 +10,7 @@ public:
 	void feedFwd();
 	void backProp();
 private:
+	unsigned int numPrevLyrsNrns;
 	Matrix weights;
 	Matrix biases; // vector form
 	Matrix z; //vector form

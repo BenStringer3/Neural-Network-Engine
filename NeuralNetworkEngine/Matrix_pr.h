@@ -31,6 +31,7 @@ public:
 	
 		Matrix_pr& operator=(const Matrix& mat);
 
+		Matrix_pr & pointTo(Matrix & mat);
 
 		Matrix_pr& operator*=(const double scalar);
 
@@ -62,13 +63,21 @@ public:
 
 		Matrix_pr& reshape(unsigned int rows, unsigned int cols);
 		
-		double& max();
+		double max();
 
 		void maxLocation(unsigned int & row, unsigned int & col);
 
 		double avg();
 
 		void assign(const Matrix_pr & mat);
+
+		Matrix operator+(const Matrix & mat) const;
+
+		static Matrix_pr vertcat(const Matrix_pr & top, const Matrix_pr & bot);
+
+		Matrix_pr block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width);
+
+		Matrix_pr cwiseProduct(const Matrix_pr& mat);
 };
 
 

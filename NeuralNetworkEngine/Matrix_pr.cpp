@@ -4,6 +4,8 @@
 
 #include "Matrix_pr.h"
 
+#define SAFETY_CHECKS 0
+
 Matrix_pr::Matrix_pr() {
 	rows = 0;
 	cols = 0;
@@ -25,18 +27,32 @@ Matrix_pr& Matrix_pr::operator=(const Matrix& mat) {
 	return *this;
 };
 
+Matrix_pr& Matrix_pr::pointTo(Matrix & mat) {
+	int i, ii;
+	if (this->rows != mat.rows || this->cols != mat.cols) {
+		throw std::out_of_range("dimension mismatch");
+	}
+	else {
 
+		for (i = 0; i < this->rows; i++) {
+			for (ii = 0; ii < this->cols; ii++) {
+				this->data[i*this->cols + ii] = &mat.data[i*this->cols + ii];
+			}
+		}
+	}
+	return *this;
+}
 
 Matrix_pr::Matrix_pr(unsigned int r, unsigned int c) {
-	int i, ii;
+	//int i, ii;
 	rows = r;
 	cols = c;
 	data.resize(r*c);
-	for (i = 0; i < this->rows; i++) {
+	/*for (i = 0; i < this->rows; i++) {
 		for (ii = 0; ii < this->cols; ii++) {
 			this->data[i*this->cols + ii] = NULL;
 		}
-	}
+	}*/
 };
 
 Matrix_pr& Matrix_pr::operator*=(const double scalar) {
@@ -93,6 +109,44 @@ Matrix_pr& Matrix_pr::operator+=(const Matrix mat) {
 	return *this;
 }
 
+Matrix_pr Matrix_pr::block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width) {
+	Matrix_pr result(height, width);
+	int i, ii;
+#if SAFETY_CHECKS
+	if (height == 0 || width == 0) {
+		throw std::out_of_range("block must have non-zero height and width");
+	}
+	else if (startRow + height - 1 > rows || startCol + width - 1 > cols) {
+		throw std::out_of_range("block extends beyond matrix dimensions");
+	}
+#endif
+
+		//result = Matrix_pr(height, width);
+		for (i = startRow; i < startRow + height; i++) {
+			for (ii = startCol; ii < startCol + width; ii++) {
+				result.data[(i - startRow)*result.cols + ii - startCol] = this->data[i*this->cols + ii];
+			}
+		}
+
+	return result;
+}
+
+Matrix_pr Matrix_pr::cwiseProduct(const Matrix_pr& mat) {
+
+	int i, ii;
+	Matrix_pr result = *this;
+	if (this->rows != mat.rows || this->cols != mat.cols) {
+		throw std::out_of_range("dimension mismatch");
+	}
+	else {
+		for (i = 0; i < result.rows; i++) {
+			for (ii = 0; ii < result.cols; ii++) {
+				result(i, ii) = *this->data[i*this->cols + ii] * (*mat.data[i*mat.cols + ii]);
+			}
+		}
+	}
+	return result;
+}
 
 Matrix Matrix_pr::operator*(const double scalar) const {
 	int i, ii;
@@ -172,7 +226,7 @@ Matrix_pr& Matrix_pr::reshape(unsigned int rows, unsigned int cols)
 	return *this;
 }
 
-double & Matrix_pr::max()
+double  Matrix_pr::max()
 {
 	unsigned int maxLocation = 0;
 	for (int i = 0; i < this->data.size(); i++) {
@@ -213,4 +267,42 @@ void Matrix_pr::assign(const Matrix_pr & mat) {
 		*this->data[i] = *mat.data[i];
 	}
 	
+}
+
+Matrix Matrix_pr::operator+(const Matrix& mat) const {
+	int i, ii;
+	Matrix result;
+	if (this->rows != mat.rows || this->cols != mat.cols) {
+		throw std::out_of_range("dimension mismatch");
+	}
+	else {
+		result = Matrix(this->rows, this->cols);
+		for (i = 0; i < this->rows; i++) {
+			for (ii = 0; ii < this->cols; ii++) {
+				result.data[i*this->cols + ii] = *this->data[i*this->cols + ii] + mat.data[i*this->cols + ii];
+			}
+		}
+	}
+	return result;
+}
+
+Matrix_pr Matrix_pr::vertcat(const Matrix_pr& top, const Matrix_pr& bot) {
+	Matrix_pr result(top.rows + bot.rows, top.cols);
+	int i, ii;
+	if (top.cols != bot.cols) {
+		throw std::out_of_range("These matrices' col sizes don't match");
+	}
+	else {
+		for (i = 0; i < result.rows; i++) {
+			for (ii = 0; ii < result.cols; ii++) {
+				if (i < top.rows) {
+					result.data[i*result.cols + ii] = top.data[i*top.cols + ii];
+				}
+				else {
+					result.data[i*result.cols + ii] = bot.data[i*top.cols - top.rows + ii];// (i - top.rows, ii);
+				}
+			}
+		}
+	}
+	return result;
 }

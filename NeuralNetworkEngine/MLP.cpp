@@ -9,7 +9,8 @@ MLP::MLP(unsigned int rows, unsigned int cols)
 
 	this->activations = Matrix(rows, cols);
 	this->biases = Matrix::random(rows, cols);
-	//this->biasFaults = Matrix(rows, cols);
+	this->numPrevLyrsNrns = 0;
+	this->inputs = Matrix_pr(0, 1);
 }
 
 
@@ -19,11 +20,12 @@ MLP::~MLP()
 
 void MLP::connect(Layer * prevLyr)
 {
-
-	this->weights = Matrix::random(this->lyrRows * this-> lyrCols, prevLyr->lyrRows * prevLyr->lyrCols);
+	this->numPrevLyrsNrns += prevLyr->lyrRows * prevLyr->lyrCols;
+	this->weights = Matrix::random(this->lyrRows * this-> lyrCols, this->numPrevLyrsNrns);
 	//this->weightFaults = Matrix(this->lyrRows * this->lyrCols, prevLyr->lyrRows * prevLyr->lyrCols);
 
-	this->inputs = (prevLyr->activations.reshape(prevLyr->lyrRows * prevLyr->lyrCols, 1)).block(0, 0, prevLyr->lyrRows * prevLyr->lyrCols, 1);
+	//this->inputs = (prevLyr->activations.reshape(this->numPrevLyrsNrns, 1)).block(0, 0, this->numPrevLyrsNrns, 1); //TODO: replace with pointsTo ??
+	this->inputs = Matrix_pr::vertcat(this->inputs, (prevLyr->activations.reshape(prevLyr->lyrRows * prevLyr->lyrCols, 1)).block(0, 0, prevLyr->lyrRows * prevLyr->lyrCols, 1));
 	prevLyr->outputConnected = true;
 }
 
@@ -52,6 +54,12 @@ void MLP::backProp() {
 
 Matrix MLP::sig(Matrix *x) {
 	Matrix ones = Matrix::ones(x->rows, x->cols);
+	Matrix a, b, c, d; 
+	cout << *x << endl;
+	a = (-1.0 * (*x));
+	b = a.exp();
+	c = ones + b;
+	d = ones.cwiseQuotient(c);
 	return ones.cwiseQuotient((ones + (-1.0 * (*x)).exp()));
 }
 
