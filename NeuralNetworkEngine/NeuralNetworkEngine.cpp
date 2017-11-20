@@ -7,6 +7,7 @@
 #include "stdafx.h"
 #include <boost/asio.hpp>
 #include <iostream>
+
 #include <math.h>
 
 
@@ -14,24 +15,23 @@
 #include "MLP.h"
 #include "Convolutional.h"
 #include "Pooling.h"
-//#include "Network.h"
+#include "ElemWise.h"
+#include "cc.h"
 
 #define IMG_DIM 28
 #define NUM_OUTS 10
 #define IMG_SIZE 784
+#define INERTIA 0.9
+
+#define NUM_CONVS 4
+#define NUM_BRANCHES 2
+#define NUM_LAYERS (2 + 3*NUM_CONVS*2 + 3*NUM_CONVS*NUM_BRANCHES)
+#define LEARNING_RATE 0.01
 
 using namespace std;
 
-#pragma pack(push, 1)
-typedef struct MatrixSendMsg {
-	char m;
-	uint32_t rows;
-	uint32_t cols;
-	MatrixSendMsg() {
-		m = 'm';
-	}
-};
 
+#pragma pack(push, 1)
 typedef struct FitnessSendMsg {
 	char b;
 	uint32_t batchNum;
@@ -43,106 +43,202 @@ typedef struct FitnessSendMsg {
 };
 #pragma pack(pop)
 
+//void printMat(boost::asio::ip::tcp::socket & socket, const Matrix & mat, uint32_t id, uint32_t batchNum);
+//extern NNE_Helper NNE_Helper;
+
 int main()
 {
+	uint32_t batchNum = 1;
 	//network stuff
-	MLP input(IMG_DIM, IMG_DIM);
-	Convolutional conv1;
-	Pooling pool1(Max);
-	Convolutional conv2;
-	Pooling pool2(Max);
-	MLP classification1(5, 5);
-	MLP classification2(NUM_OUTS, 1);
+	MLP input(IMG_DIM, IMG_DIM, LEARNING_RATE);
+	MLP classification1(5, 5, LEARNING_RATE);
+	MLP classification2(NUM_OUTS, 1, LEARNING_RATE);
+	Layer *layers[NUM_LAYERS];
+	int i, u, ii = 0, iii=0, iiii = 0;
+	int rightDigit, guessDigit;
+	Convolutional * conv[NUM_CONVS*2];
+	Convolutional * conv2[NUM_CONVS*NUM_BRANCHES];
+	Pooling * pool[NUM_CONVS*2];
+	Pooling * pool2[NUM_CONVS*NUM_BRANCHES];
+	//ElemWise * bias[NUM_CONVS];
+	ElemWise * sig[NUM_CONVS*2];
+	ElemWise * sig2[NUM_CONVS*NUM_BRANCHES];
 
 	//server stuff
 	Matrix buffy(NUM_OUTS, 1);
-	MatrixSendMsg matSndMsg[1];
 	FitnessSendMsg fitSndMsg[1];
-	uint32_t trainingDataSizeMsg[1];
 	size_t msgSize = 0;
 	char msgHeader[1];
 	char x[1] = { 'x' };
 	bool exitFlag = false;
-	boost::asio::io_service io_service;
-	boost::asio::ip::tcp::acceptor acceptor(io_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 4012));
-	boost::asio::ip::tcp::socket socket(io_service);
+	double lr[1];
 
-	input.activations = Matrix::random(input.activations.rows, input.activations.cols);
+	for ( i = 0; i < NUM_CONVS; i++) {
 
-	//connect the network
-	conv1.connect(&input, 5, 2);
-	pool1.connect(&conv1, 5, 2);
-	//conv2.connect(&input, 3, 2);
-	//pool2.connect(&conv2, 3, 2);
-	classification1.connect(&pool1);
-	classification1.connect(&pool2);
+		conv[i] = new Convolutional(LEARNING_RATE);
+		//bias[i] = new ElemWise(Bias, LEARNING_RATE);
+		sig[i] = new ElemWise(Sig, LEARNING_RATE);
+		pool[i] = new Pooling(Max);
+
+
+		layers[ii++] = conv[i];
+		//layers[ii++] = bias[i];
+		layers[ii++] = sig[i];
+		layers[ii++] = pool[i];
+
+
+		conv[i]->connect(&input, 4, 1);
+		sig[i]->connect(conv[i]);
+		pool[i]->connect(sig[i], 2, 2);
+
+		for (int j = 0; j < NUM_BRANCHES; j++) {
+			conv2[i*NUM_BRANCHES + j] = new Convolutional(LEARNING_RATE);
+			sig2[i*NUM_BRANCHES + j] = new ElemWise(Sig, LEARNING_RATE);
+			pool2[i*NUM_BRANCHES + j] = new Pooling(Max);
+
+
+			layers[ii++] = conv2[i*NUM_BRANCHES + j];
+			layers[ii++] = sig2[i*NUM_BRANCHES + j];
+			layers[ii++] = pool2[i*NUM_BRANCHES + j];
+
+			conv2[i*NUM_BRANCHES + j]->connect(pool[i], 3, 1);
+			sig2[i*NUM_BRANCHES + j]->connect(conv2[i*NUM_BRANCHES + j]);
+			pool2[i*NUM_BRANCHES + j]->connect(sig2[i*NUM_BRANCHES + j], 2, 2);
+			classification1.connect(pool2[i*NUM_BRANCHES + j]);
+		}
+
+
+		//classification1.connect(pool[i]);
+	}
+	for (i = NUM_CONVS; i < 2*NUM_CONVS; i++) {
+
+		conv[i] = new Convolutional(LEARNING_RATE);
+		//bias[i] = new ElemWise(Bias, LEARNING_RATE);
+		sig[i] = new ElemWise(Sig, LEARNING_RATE);
+		pool[i] = new Pooling(Max);
+
+
+		layers[ii++] = conv[i];
+		//layers[ii++] = bias[i];
+		layers[ii++] = sig[i];
+		layers[ii++] = pool[i];
+
+
+		conv[i]->connect(&input, 4, 1);
+		sig[i]->connect(conv[i]);
+		pool[i]->connect(sig[i], 2, 2);
+		classification1.connect(pool[i]);
+	}
 	classification2.connect(&classification1);
+	layers[ii++] = &classification1;
+	layers[ii++] = &classification2;
+
 
 	while (1) {
 		//block until client connects
 		std::cout << "Neural Network Engine (NNE) Server is running\n";
-		acceptor.accept(socket);
+		NNE_helper.acceptor_.accept(NNE_helper.socket_);
 		std::cout << "Client has accepted connection. Awaiting message\n";
 		exitFlag = false;
 		//while the user hasn't sent the exit code or disconnected the client
 		while (!exitFlag) {
-			//listen for messages from the client
-			if ((msgSize = socket.available()) > 0) {
+			//listen for messages from the client 
+			if ((msgSize = NNE_helper.socket_.available()) > 0) {
 				//read the message header: a single char to determine message type
-				read(socket, boost::asio::buffer(msgHeader, 1));
+				read(NNE_helper.socket_, boost::asio::buffer(msgHeader, 1));
 				switch (*msgHeader) {
+				case 'l':
+					read(NNE_helper.socket_, boost::asio::buffer(lr, sizeof(double)));
+					conv[3]->setLearningRate(lr[0]);
+					conv[2]->setLearningRate(lr[0]);
+					conv[1]->setLearningRate(lr[0]);
+					conv[0]->setLearningRate(lr[0]);
+					classification1.setLearningRate(lr[0]);
+					classification2.setLearningRate(lr[0]);
+					cout << "changing learning rate" << endl;
+					break;
 					//training data
 				case 't':
-					//cout << "Receiving training data" << endl;
-					//std::cout << "Bytes available: " << (msgSize = socket.available()) << endl;
-					//read(socket, boost::asio::buffer(trainingDataSizeMsg, sizeof(trainingDataSizeMsg)));
-					//std::cout << "batchSize: " << trainingDataSizeMsg << endl;
 
 					//read in the inputBatch data
-					read(socket, boost::asio::buffer(input.activations.data, IMG_SIZE * sizeof(double)));
-					//cout << "read socket. now " << (msgSize = socket.available()) << " bytes available" << endl;
+					read(NNE_helper.socket_, boost::asio::buffer(input.activations.data, IMG_SIZE * sizeof(double)));
+					input.activations *= (1.0 / 255.0);
+					NNE_helper.newBatch();
+					for (ii = 0; ii < NUM_LAYERS; ii++) {
+						layers[ii]->feedFwd();
+						/*for (u = 0; u < layers[ii]->lyrCols*layers[ii]->lyrRows; u++) {
+							if (layers[ii]->activations.data[u] != layers[ii]->activations.data[u]) {
+								cout << "nan detected " << endl;
+							}
+						}*/
+					}
+					//for (int ii = 0; ii < NUM_LAYERS - 1; ii++) {
+					//	layers[ii]->activations *= 0;
+					//}
 
-					conv1.feedFwd();
-					pool1.feedFwd();
-					//conv2.feedFwd();
-					//pool2.feedFwd();
-					classification1.feedFwd();
-					classification2.feedFwd();
-
-					//cout << pool1.activations << endl;
-					matSndMsg->m = 'm';
-					matSndMsg->rows = classification2.lyrRows;
-					matSndMsg->cols = classification2.lyrCols;
-					write(socket, boost::asio::buffer(matSndMsg, sizeof(matSndMsg)));
-					write(socket, boost::asio::buffer(classification2.activations.data, classification2.activations.data.size() * sizeof(double) ));
 					
-					matSndMsg->rows = conv1.lyrRows;
-					matSndMsg->cols = conv1.lyrCols;
-					matSndMsg->m = 'r';
-					write(socket, boost::asio::buffer(matSndMsg, sizeof(matSndMsg)));
-					write(socket, boost::asio::buffer(conv1.activations.data, conv1.activations.data.size() * sizeof(double)));
+					NNE_helper.printMat(classification2.activations);
+					/*for (int i = 2; i < NUM_CONVS + 2; i++) {
+						printMat(socket, pool[i].activations, i, batchNum);
+					}*/
+					
+					//printMat(socket, conv1.activations, 2, batchNum);
+					////printMat(socket, conv1_1.activations, 3, batchNum);
+					////printMat(socket, conv1_2.activations, 4, batchNum);
+					//printMat(socket, conv2.activations, 5, batchNum);
+					batchNum++;
 
-					read(socket, boost::asio::buffer(buffy.data, NUM_OUTS * sizeof(double)));
-					//cout << "read socket. now " << (msgSize = socket.available()) << " bytes available" << endl;
-					classification2.activations -= buffy;
+					read(NNE_helper.socket_, boost::asio::buffer(buffy.data, NUM_OUTS * sizeof(double)));
+
+					iii = 0;
+					for (ii = 0; ii < NUM_OUTS; ii++) {
+						if (buffy.data[ii] == 1) {
+							cout << iii << ": ";
+							rightDigit = iii;
+						}
+						iii++;
+					}
+					iiii = 0;
+					for ( ii = 0; ii < NUM_OUTS; ii++) {
+						if (layers[NUM_LAYERS - 1]->activations.data[ii] > layers[NUM_LAYERS - 1]->activations.data[iiii]) {
+							iiii = ii;
+						}
+					}
+					cout << iiii << ": ";
+					layers[NUM_LAYERS - 1]->dEdA = layers[NUM_LAYERS - 1]->activations - buffy;
 					//cout << classification2.activations << endl;
 					fitSndMsg->fitness = 0;
-					for (int u = 0; u < classification2.activations.data.size(); u++) {
-						fitSndMsg->fitness += pow(classification2.activations(u), 2.0);
+					for ( u = 0; u < layers[NUM_LAYERS - 1]->activations.data.size(); u++) {
+						fitSndMsg->fitness += pow(layers[NUM_LAYERS - 1]->dEdA(u), 2.0);
 					}
 					fitSndMsg->batchNum++;
-					write(socket, boost::asio::buffer(fitSndMsg, sizeof(fitSndMsg)));
-					classification2.backProp();
-					classification1.backProp();
-					pool1.backProp();
-					conv1.backProp();
-					//pool2.backProp();
-					//conv2.backProp();
+					write(NNE_helper.socket_, boost::asio::buffer(fitSndMsg, sizeof(fitSndMsg)));
+					
+					cout << std::setw(7) << std::setprecision(4) << fitSndMsg->fitness;
+					if (iiii != rightDigit) {
+						cout << " x ";
+					}		
+					cout << endl;
+
+					//backprop
+					for ( ii = NUM_LAYERS - 1; ii >= 0; ii--) {
+						layers[ii]->backProp();
+						for ( u = 0; u < layers[ii]->lyrCols*layers[ii]->lyrRows; u++) {
+							if (layers[ii]->activations.data[u] != layers[ii]->activations.data[u]) {
+								cout << "nan detected " << endl;
+							}
+						}
+					}
+					
 					break;
 				case 'x':
 					exitFlag = true;
-					write(socket, boost::asio::buffer(x, 1));
-					socket.close();
+					write(NNE_helper.socket_, boost::asio::buffer(x, 1));
+					NNE_helper.socket_.close();
+					for (int i = 0; i < NUM_CONVS; i++) {
+						delete conv[i];
+						delete pool[i];
+					}
 					cout << "exiting" << endl;
 					break;
 				default:
@@ -185,3 +281,15 @@ int main()
 
 	return 0;
 }
+
+//void printMat(boost::asio::ip::tcp::socket & socket, const Matrix & mat, uint32_t id, uint32_t batchNum) {
+//	static MatrixSendMsg matSndMsg[1];
+//
+//	matSndMsg->id = id;
+//	matSndMsg->batchNum = batchNum;
+//	matSndMsg->rows = mat.rows;
+//	matSndMsg->cols = mat.cols;
+//
+//	write(socket, boost::asio::buffer(matSndMsg, sizeof(MatrixSendMsg)));
+//	write(socket, boost::asio::buffer(mat.data.data(), mat.data.size() * sizeof(double)));
+//}

@@ -10,6 +10,7 @@ class Pooling :
 {
 public:
 	Pooling(PoolingType type);
+	Pooling();
 	~Pooling();
 	void connect(Layer * prevLyr, unsigned int input2WinRatio, unsigned int prevLyr2ThisLyrRatio);
 	void feedFwd();

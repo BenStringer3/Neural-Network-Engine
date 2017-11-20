@@ -9,14 +9,17 @@ public:
 	unsigned int lyrRows;
 	unsigned int lyrCols;
 	Matrix activations; //matrix form
+	Matrix dEdA;
 	bool outputConnected;
-
-protected:
-	
-	Matrix_pr inputs;  //vector form
-	//Matrix dels;
-	//Matrix_pr postLyrDels;
 	virtual void feedFwd() = 0;
 	virtual void backProp() = 0;
+protected:
+	Matrix_pr prevLyrDels;
+	Matrix_pr inputs;  //vector form
+	Matrix correctionCoeffs;
+
+	//Matrix dels;
+	//Matrix_pr dEdA;
+
 };
 

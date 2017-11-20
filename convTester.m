@@ -1,19 +1,22 @@
 
-    N = 1000;
+    N =60000;
+    if ~exist('inputBatch', 'var')
+       load digit_data.mat 
+    end
  if ~exist('t', 'var') || strcmp(t.Status, 'closed')
-     close all
+     %close all
      t = connectNNE(6274 + 80);
       fits = [];
       res = [];
-      fig1 = figure();
-      fig2 = figure();
-      ax1 = axes(fig1);
-      ax2 = axes(fig2);
+      datas = cell(1, 1);
+      imgs = cell(1, 1);
+      iter = 1;
+
  end
  
  tim = timer;
- tim.Period = 0.5;
- tim.StartDelay = 0.5;
+ tim.Period = 0.05;
+ tim.StartDelay = 0.05;
  tim.ExecutionMode = 'fixedRate';
  tim.BusyMode = 'drop';
  tim.TimerFcn = @(~, ~) evalin('base', 'readNNE');
@@ -37,7 +40,7 @@ try
      msg = typecast(msg, 'uint8');
      
 
-     while (length(res) + 5) < n
+     while (length(datas) + 7) < n
         % pause(2);
      end
      sendNNE(t, msg);
@@ -45,18 +48,20 @@ try
      
      %readNNE;
  end
- readNNE;
-postPlotter;
+ %readNNE;
+%postPlotter;
 catch err
  stop;
  
  rethrow(err);
 end
+
 tic();
-     while length(res) < n
-        % pause(2);
+     while length(datas) < N
+         pause(2);
      end
      disp(num2str(toc()) );
   stop;   
+  postPlotter;
 
      

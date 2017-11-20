@@ -13,6 +13,8 @@ Matrix::Matrix() {
 	cols = 0;
 }
 
+Matrix::~Matrix() {}
+
 Matrix::Matrix(unsigned int r, unsigned int c) {
 	int i, ii;
 	rows = r;

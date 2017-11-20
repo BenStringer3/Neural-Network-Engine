@@ -4,20 +4,25 @@ class Convolutional :
 	public Layer
 {
 public:
+	Convolutional(double learningRate);
 	Convolutional();
 	~Convolutional();
 	void connect(Layer * prevLyr, unsigned int input2WinRatio, unsigned int prevLyr2ThisLyrRatio);
 	void feedFwd();
 	void backProp();
 	void setWeights(const Matrix & mat);
+	void setLearningRate(double lr);
+
 private:
 	unsigned int padding;
 	//only one receiving neuron 
 	unsigned int winSideLen; //assumes only square windows for now
 	unsigned int stride;
 	Matrix weights;
-	Matrix weightFaults;
+	//Matrix biases;
+	Matrix dEdW;
 	Layer * prevLyr;
 	Matrix zerosPadding;
+	double learningRate;
 };
 

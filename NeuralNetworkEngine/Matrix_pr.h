@@ -21,6 +21,8 @@ public:
 	
 		Matrix_pr();
 
+		~Matrix_pr();
+
 		Matrix_pr& operator/=(const double scalar);
 	
 		Matrix_pr(unsigned int r, unsigned int c);
@@ -42,6 +44,8 @@ public:
 		Matrix_pr& operator+=(const Matrix mat);
 
 		Matrix operator*(const double scalar) const;
+
+		Matrix operator*(const Matrix_pr & mat) const;
 
 		friend std::ostream& operator<<(std::ostream& os, const Matrix_pr& mat)
 		{
@@ -74,6 +78,8 @@ public:
 		Matrix operator+(const Matrix & mat) const;
 
 		static Matrix_pr vertcat(const Matrix_pr & top, const Matrix_pr & bot);
+
+		static Matrix_pr horzcat(const Matrix_pr & ls, const Matrix_pr & rs);
 
 		Matrix_pr block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width);
 

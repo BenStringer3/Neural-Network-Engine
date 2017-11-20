@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "Pooling.h"
-
-
+#include "cc.h"
+#include <iomanip>
 
 
 Pooling::Pooling(PoolingType type)
@@ -9,20 +9,25 @@ Pooling::Pooling(PoolingType type)
 	poolingType = type;
 }
 
+Pooling::Pooling()
+{
+}
+
 Pooling::~Pooling()
 {
 }
 
-void Pooling::connect(Layer * prevLyr, unsigned int input2WinRatio, unsigned int prevLyr2ThisLyrRatio)
+void Pooling::connect(Layer * prevLyr, unsigned int winSideLen, unsigned int prevLyr2ThisLyrRatio)
 {
 	unsigned int i = 0;
 	this->prevLyr = prevLyr;
-	if (prevLyr->lyrRows < prevLyr->lyrCols) {
-		this->winSideLen = prevLyr->lyrRows / input2WinRatio;
-	}
-	else {
-		this->winSideLen = prevLyr->lyrCols / input2WinRatio;
-	}
+	//if (prevLyr->lyrRows < prevLyr->lyrCols) {
+	//	this->winSideLen = prevLyr->lyrRows / input2WinRatio;
+	//}
+	//else {
+	//	this->winSideLen = prevLyr->lyrCols / input2WinRatio;
+	//}
+	this->winSideLen = winSideLen;
 	this->stride = prevLyr2ThisLyrRatio;
 
 	padding = floor(winSideLen / 2);
@@ -30,14 +35,18 @@ void Pooling::connect(Layer * prevLyr, unsigned int input2WinRatio, unsigned int
 	this->lyrRows = floor((prevLyr->lyrRows + padding * 2 - winSideLen) / stride) + 1;
 	this->lyrCols = floor((prevLyr->lyrCols + padding * 2 - winSideLen) / stride) + 1;
 	this->activations = Matrix(lyrRows, lyrCols);
+	this->dEdA = Matrix(lyrRows, lyrCols);
 
 	zerosPadding = Matrix(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
 	inputs = Matrix_pr(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
+	prevLyrDels = Matrix_pr(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
 	inputs.pointTo(zerosPadding);
+	prevLyrDels.pointTo(zerosPadding);
 	//(inputs.block(padding , padding, prevLyr->lyrRows, prevLyr->lyrCols)).pointTo(prevLyr->activations);
 	for (int i = padding; i < prevLyr->lyrRows + padding; i++) {
 		for (int j = padding; j < prevLyr->lyrCols + padding; j++) {
 			inputs.data[i*inputs.cols + j] = &prevLyr->activations.data[(i - padding)*prevLyr->lyrCols + j - padding];
+			this->prevLyrDels.data[i*prevLyrDels.cols + j] = &prevLyr->dEdA.data[(i - padding)*prevLyr->lyrCols + j - padding];
 		}
 	}
 }
@@ -137,32 +146,50 @@ void Pooling::feedFwd()
 		for (j = 0; j < activations.cols; j++) {
 			switch (poolingType) {
 			case Max:
-				cout << inputs.block(i*stride, j*stride, winSideLen, winSideLen) << endl;
-				this->activations(i, j) += (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).max();
+				//cout << inputs.block(i*stride, j*stride, winSideLen, winSideLen) << endl;
+				this->activations(i, j) = (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).max();
 				break;
 			case Avg:
-				this->activations(i, j) += (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).avg();
+				this->activations(i, j) = (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).avg();
 				break;
 			}
 		}
 	}
+	NNE_helper.printMat(activations);
+	//inputs *= 0;
+	dEdA *= 0;
 }
 
 
 void Pooling::backProp()
 {
 	unsigned int i, j, r, c;
+	//inputs *= 0;
 	for (i = 0; i < activations.rows; i++) {
 		for (j = 0; j < activations.cols; j++) {
 			switch (poolingType) {
 			case Max:
+				//cout << endl;
+				//for (int ii = 0; ii < inputs.rows; ii++) {
+				//	for (int jj = 0; jj < inputs.rows; jj++) {
+				//		if ((jj == j*stride || jj == j*stride + winSideLen) && (i*stride <= ii) && (ii < (i*stride + winSideLen))) {
+				//			cout << "|";
+				//		}
+
+				//			cout << std::setw(5) << std::fixed << std::setprecision(2) << inputs(ii, jj) << " ";
+	
+
+				//	}
+				//	cout << endl;
+				//}
 				(inputs.block(i*stride, j*stride, winSideLen, winSideLen)).maxLocation(r, c);
-				(inputs.block(i*stride, j*stride, winSideLen, winSideLen))(r, c) += this->activations(i, j);
+				(prevLyrDels.block(i*stride, j*stride, winSideLen, winSideLen))(r, c) += this->dEdA(i, j);
+				//cout << this->prevLyrDels << endl;
 				/*this->inputs.maxLocation(r, c);
 				this->inputs(r, c) += this->activations(i, j);*/
 				break;
 			case Avg:
-				(inputs.block(i*stride, j*stride, winSideLen, winSideLen)) += this->activations(i, j) / lyrRows / lyrCols * Matrix::ones(winSideLen *  winSideLen, 1);
+				(prevLyrDels.block(i*stride, j*stride, winSideLen, winSideLen)) += this->dEdA(i, j) / lyrRows / lyrCols * Matrix::ones(winSideLen *  winSideLen, 1);
 				//this->inputs += this->activations(i, j) / lyrRows / lyrCols * Matrix::ones(winSideLen*winSideLen, 1);
 				break;
 			}

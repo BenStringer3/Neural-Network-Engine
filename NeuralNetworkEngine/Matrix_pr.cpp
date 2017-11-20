@@ -11,6 +11,8 @@ Matrix_pr::Matrix_pr() {
 	cols = 0;
 };
 
+Matrix_pr::~Matrix_pr() {}
+
 Matrix_pr& Matrix_pr::operator=(const Matrix& mat) {
 	int i, ii;
 	if (this->rows != mat.rows || this->cols != mat.cols) {
@@ -160,6 +162,26 @@ Matrix Matrix_pr::operator*(const double scalar) const {
 	return result;
 }
 
+Matrix Matrix_pr::operator*(const Matrix_pr& mat) const {
+	int i, ii, iii;
+	Matrix result;
+	if (this->cols != mat.rows) {
+		throw std::out_of_range("dimension mismatch");
+	}
+	else {
+		result = Matrix(this->rows, mat.cols);
+		for (i = 0; i < mat.cols; i++) {
+			for (ii = 0; ii < mat.rows; ii++) {
+				for (iii = 0; iii < this->rows; iii++) {
+					result.data[iii*result.cols + i] += (*this->data[iii*this->cols + ii]) * (*mat.data[ii*mat.cols + i]);
+				}
+			}
+		}
+	}
+	return result;
+}
+
+
 Matrix_pr Matrix_pr::transpose() const
 {
 	int i, ii;
@@ -300,6 +322,27 @@ Matrix_pr Matrix_pr::vertcat(const Matrix_pr& top, const Matrix_pr& bot) {
 				}
 				else {
 					result.data[i*result.cols + ii] = bot.data[i*top.cols - top.rows + ii];// (i - top.rows, ii);
+				}
+			}
+		}
+	}
+	return result;
+}
+
+Matrix_pr Matrix_pr::horzcat(const Matrix_pr& ls, const Matrix_pr& rs) {
+	Matrix_pr result(ls.rows, ls.cols + rs.cols);
+	int i, ii;
+	if (ls.rows != rs.rows) {
+		throw std::out_of_range("These matrices' col sizes don't match");
+	}
+	else {
+		for (i = 0; i < result.rows; i++) {
+			for (ii = 0; ii < result.cols; ii++) {
+				if (ii < ls.cols) {
+					result.data[i*result.cols + ii] = ls.data[i*ls.cols + ii];
+				}
+				else {
+					result.data[i*result.cols + ii] = rs.data[i*rs.cols - ls.cols + ii];
 				}
 			}
 		}

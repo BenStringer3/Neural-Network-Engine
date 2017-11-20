@@ -26,6 +26,8 @@ public:
 
 	Matrix();
 
+	~Matrix();
+
 	static Matrix ones(unsigned int r, unsigned int c);
 
 	static Matrix random(unsigned int r, unsigned int c);

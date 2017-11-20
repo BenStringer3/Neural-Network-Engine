@@ -1,11 +1,16 @@
 #include "stdafx.h"
 #include "Convolutional.h"
+#include "cc.h"
 
 #define FLIP 0
 
+Convolutional::Convolutional(double learningRate)
+{
+	this->learningRate = learningRate;
+}
+
 Convolutional::Convolutional()
 {
-
 }
 
 
@@ -13,89 +18,126 @@ Convolutional::~Convolutional()
 {
 }
 
-void Convolutional::connect(Layer * prevLyr, unsigned int input2WinRatio, unsigned int prevLyr2ThisLyrRatio)
+void Convolutional::connect(Layer * prevLyr, unsigned int winSideLen, unsigned int prevLyr2ThisLyrRatio)
 {
 	unsigned int i = 0;
 
 
 	this->prevLyr = prevLyr;
-	if (prevLyr->lyrRows < prevLyr->lyrCols) { 
+	/*if (prevLyr->lyrRows < prevLyr->lyrCols) { 
 		this->winSideLen = prevLyr->lyrRows / input2WinRatio;
 	}
 	else {
 		this->winSideLen = prevLyr->lyrCols / input2WinRatio;
-	}
+	}*/
+	this->winSideLen = winSideLen;
 	this->stride = prevLyr2ThisLyrRatio;
 
 	padding = (unsigned int)floor(winSideLen / 2);
 
 	this->weights = Matrix::random(1, winSideLen*winSideLen);
-	this->weightFaults = Matrix(1, winSideLen*winSideLen);
-
+	this->dEdW = Matrix(weights.rows, weights.cols);
+	this->correctionCoeffs = Matrix(weights.rows, weights.cols);
 
 	this->lyrRows = (unsigned int)floor((prevLyr->lyrRows + padding * 2 - winSideLen) / stride) + 1 ;
 	this->lyrCols = (unsigned int)floor((prevLyr->lyrCols + padding * 2 - winSideLen) / stride) + 1;
 	this->activations = Matrix(lyrRows, lyrCols);
+	//this->biases = Matrix::random(this->lyrRows, this->lyrCols);
+
+	this->dEdA = Matrix(lyrRows, lyrCols);
 	//this->activations = Matrix((prevLyr->lyrRows  - winSideLen) / stride , (prevLyr->lyrCols  - winSideLen) / stride);
 	
 	zerosPadding = Matrix(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
 	inputs = Matrix_pr(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
+	prevLyrDels = Matrix_pr(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
 	inputs.pointTo(zerosPadding);
+	prevLyrDels.pointTo(zerosPadding);
 	//(inputs.block(padding , padding , prevLyr->lyrRows, prevLyr->lyrCols)).pointTo(prevLyr->activations);
 	for (int i = padding; i < prevLyr->lyrRows + padding; i++) {
 		for (int j = padding; j < prevLyr->lyrCols + padding; j++) {
 			inputs.data[i*inputs.cols + j] = &prevLyr->activations.data[(i - padding)*prevLyr->lyrCols + j - padding];
+			prevLyrDels.data[i*inputs.cols + j] = &prevLyr->dEdA.data[(i - padding)*prevLyr->lyrCols + j - padding];
 		}
 	}
 }
 
-#if ~FLIP
+#if !FLIP
 void Convolutional::backProp()
 {
 	unsigned int i, j;
-	//Matrix zeros(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
-	//Matrix_pr newInput(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
-	Matrix weightFaults(weights.rows, weights.cols);
-	//newInput.pointTo(zeros);
-	//(newInput.block(padding - 1, padding - 1, prevLyr->lyrRows, prevLyr->lyrCols)).pointTo(prevLyr->activations);
+	dEdW *= 0;
 
-	//newInput.block(padding - 1, padding - 1, prevLyr->lyrRows, prevLyr->lyrCols) = prevLyr->activations;
 	for (i = 0; i < activations.rows; i++) {
 		for (j = 0; j < activations.cols; j++) {
-			weightFaults += (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(1, winSideLen* winSideLen) * (activations(i, j));
+			//cout << endl;
+			//for (int ii = 0; ii < inputs.rows; ii++) {
+			//for (int jj = 0; jj < inputs.rows; jj++) {
+			//if ((jj == j*stride || jj == j*stride + winSideLen) && (i*stride <= ii) && (ii < (i*stride + winSideLen))) {
+			//cout << "|";
+			//}
+
+			//cout << std::setw(5) << std::fixed << std::setprecision(2) << inputs(ii, jj) << " ";
+
+
+			//}
+			//cout << endl;
+			//}
+			//cout << dEdA(i, j) << endl;
+			//cout << weights << endl;
+			dEdW += (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(1, winSideLen* winSideLen) * (dEdA(i, j));
+			//cout << dEdW << endl;
+			(prevLyrDels.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(winSideLen * winSideLen, 1) += weights.transpose() * (dEdA(i, j));
+			zerosPadding *= 0;
 		}
 	}
-	for (i = 0; i < activations.rows; i++) {
+	/*for (i = 0; i < activations.rows; i++) {
 		for (j = 0; j < activations.cols; j++) {
-			(inputs.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(winSideLen * winSideLen, 1) += weights.transpose() * (activations(i, j));
+			(prevLyrDels.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(winSideLen * winSideLen, 1) += weights.transpose() * (postLyrDels(i, j));
 		}
-	}
+	}*/
 	zerosPadding *= 0;
-	weights.reshape(1, winSideLen * winSideLen) -= weightFaults;
+	//this->correctionCoeffs = 0.9*this->correctionCoeffs + learningRate*dEdW;
+	weights -= learningRate*dEdW; ;// this->correctionCoeffs;
+	//biases -= dEdA;
 }
 
 void Convolutional::feedFwd() {
 	unsigned int i, j;
-	//Matrix zeros(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
-	//Matrix_pr newInput(prevLyr->lyrRows + 2 * padding, prevLyr->lyrCols + 2 * padding);
-	//newInput.pointTo(zeros);
-	//(newInput.block(padding - 1, padding - 1, prevLyr->lyrRows, prevLyr->lyrCols)).pointTo(prevLyr->activations);
 	for (i = 0; i < activations.rows; i++) {
 		for (j = 0; j < activations.cols; j++) {
 			//window.block(blokWin_i, blokWin_j, blokWin_height, blokWin_width).assign(prevLyr->activations.block(in_i, in_j, blokWin_height, blokWin_width));
 
 			//window.reshape(winSideLen* winSideLen, 1);
 			//cout << inputs.block(i*stride, j*stride, winSideLen, winSideLen) << endl;
-			this->activations(i, j) += (weights * (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(winSideLen* winSideLen, 1)).data[0];
+
+			/*cout << endl;
+			for (int ii = 0; ii < inputs.rows; ii++) {
+				for (int jj = 0; jj < inputs.rows; jj++) {
+					if ((jj == j*stride || jj == j*stride + winSideLen) && (i*stride <= ii) && (ii < (i*stride + winSideLen))) {
+						cout << "|";
+					}
+
+						cout << std::setw(5) << std::fixed << std::setprecision(2) << inputs(ii, jj) << " ";
+
+
+				}
+				cout << endl;
+			}*/
+			//cout << weights << endl;
+			this->activations(i, j) = (weights * (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(winSideLen* winSideLen, 1)).data[0];// +biases(i, j);
+			//cout << this->activations << endl;
 		}
 	}
+	dEdA *= 0;
+	//NNE_helper.printMat(activations);
+	//inputs *= 0;
 }
 #endif
 
 #if FLIP
 void Convolutional::backProp()
 {
-	Matrix weightFaults(weights.rows, weights.cols);
+	Matrix dEdW(weights.rows, weights.cols);
 	unsigned int i, j;
 	int in_i, in_j, win_i, win_j, blokWin_i, blokWin_j, blokWin_height, blokWin_width, in_height, in_width;
 	Matrix window(winSideLen, winSideLen);
@@ -124,7 +166,7 @@ void Convolutional::backProp()
 			window *= 0;// Matrix(winSideLen, winSideLen);
 			window.block(blokWin_i, blokWin_j, blokWin_height, blokWin_width).assign(prevLyr->activations.block(in_i, in_j, blokWin_height, blokWin_width));
 			
-			weightFaults += window.reshape(1, winSideLen* winSideLen) * (activations(i, j));
+			dEdW += window.reshape(1, winSideLen* winSideLen) * (activations(i, j));
 		}
 	}
 	prevLyr->activations *= 0;// Matrix(prevLyr->lyrRows, prevLyr->lyrCols);
@@ -151,7 +193,7 @@ void Convolutional::backProp()
 			(prevLyr->activations.block(in_i, in_j, blokWin_height, blokWin_width)).reshape(blokWin_height * blokWin_width, 1) += ((weights.reshape(winSideLen, winSideLen)).block(blokWin_i, blokWin_j, blokWin_height, blokWin_width)).reshape(blokWin_height * blokWin_width, 1) * (activations(i, j));
 		}
 	}
-	weights.reshape(1, winSideLen * winSideLen) -= weightFaults;
+	weights.reshape(1, winSideLen * winSideLen) -= dEdW;
 }
 
 
@@ -197,15 +239,20 @@ void Convolutional::setWeights(const Matrix & mat)
 	this->weights = mat;
 }
 
+void Convolutional::setLearningRate(double lr)
+{
+	this->learningRate = lr;
+}
+
 //void Convolutional::backProp()
 //{
-//	Matrix weightFaults(weights.rows, weights.cols);
+//	Matrix dEdW(weights.rows, weights.cols);
 //
 //	for (int i = 0; i < activations.rows; i++) {
 //		for (int j = 0; j < activations.cols; j++) {
 //
 //			this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
-//			weightFaults += (inputs.reshape(winSideLen * winSideLen, 1)).transpose() * (activations(i, j));
+//			dEdW += (inputs.reshape(winSideLen * winSideLen, 1)).transpose() * (activations(i, j));
 //		}
 //	}
 //	for (int i = 0; i < activations.rows; i++) {
@@ -214,7 +261,7 @@ void Convolutional::setWeights(const Matrix & mat)
 //			this->inputs += weights.transpose() * (activations(i, j));
 //		}
 //	}
-//	weights -= weightFaults;
+//	weights -= dEdW;
 //}
 //
 //void Convolutional::feedFwd()
@@ -222,7 +269,7 @@ void Convolutional::setWeights(const Matrix & mat)
 //	for (int i = 0; i < activations.rows; i++) {
 //		for (int j = 0; j < activations.cols; j++) {
 //			this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
-//			weightFaults += (inputs.reshape(winSideLen * winSideLen, 1)).transpose() * (activations(i, j));
+//			dEdW += (inputs.reshape(winSideLen * winSideLen, 1)).transpose() * (activations(i, j));
 //			this->activations(i, j) += (weights * inputs).data[0];
 //		}
 //	}
@@ -230,7 +277,7 @@ void Convolutional::setWeights(const Matrix & mat)
 
 //void Convolutional::backProp()
 //{
-//	Matrix weightFaults(weights.rows, weights.cols);
+//	Matrix dEdW(weights.rows, weights.cols);
 //	Matrix inputz(winSideLen * winSideLen, 1);
 //	unsigned int a, b, c, d, f, g;
 //	Matrix e;
@@ -269,7 +316,7 @@ void Convolutional::setWeights(const Matrix & mat)
 //			inputz.block(a, b, c, d) = e;
 //			cout << inputz << endl;
 //			//this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
-//			weightFaults += (inputz.reshape(winSideLen * winSideLen, 1)).transpose() * (activations(i, j)) ;
+//			dEdW += (inputz.reshape(winSideLen * winSideLen, 1)).transpose() * (activations(i, j)) ;
 //			//this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
 //			//this->inputs += weights.transpose()* activations.reshape(winSideLen*winSideLen, 1);
 //		}
@@ -280,7 +327,7 @@ void Convolutional::setWeights(const Matrix & mat)
 //			this->inputs += weights.transpose() * (activations(i, j));
 //		}
 //	}
-//	weights -= weightFaults;
+//	weights -= dEdW;
 //}
 //
 //void Convolutional::feedFwd()
@@ -323,7 +370,7 @@ void Convolutional::setWeights(const Matrix & mat)
 //			inputz.block(a, b, c, d) = e;
 //			cout << inputz << endl;
 //			//this->inputs = prevLyr->activations.block(i*stride, j*stride, winSideLen, winSideLen).reshape(winSideLen*winSideLen, 1);
-//			weightFaults += (inputz.reshape(winSideLen * winSideLen, 1)).transpose() * (activations(i, j));
+//			dEdW += (inputz.reshape(winSideLen * winSideLen, 1)).transpose() * (activations(i, j));
 //			this->activations(i, j) += (weights * inputz).data[0];
 //		}
 //	}
