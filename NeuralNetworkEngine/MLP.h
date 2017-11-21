@@ -19,5 +19,11 @@ private:
 	Matrix z; //vector form
 	Matrix sig(Matrix * x);
 	Matrix sig_prime(Matrix * x);
+	Matrix dEdW;
+	Matrix dEdB;
+	Matrix inertial_dEdW;
+	Matrix inertial_dEdB;
+	unsigned int iterPerEpoch;
+	unsigned int iter;
 };
 

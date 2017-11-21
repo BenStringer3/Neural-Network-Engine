@@ -7,6 +7,8 @@
 Convolutional::Convolutional(double learningRate)
 {
 	this->learningRate = learningRate;
+	iter = 1;
+	iterPerEpoch = 30;
 }
 
 Convolutional::Convolutional()
@@ -37,12 +39,15 @@ void Convolutional::connect(Layer * prevLyr, unsigned int winSideLen, unsigned i
 
 	this->weights = Matrix::random(1, winSideLen*winSideLen);
 	this->dEdW = Matrix(weights.rows, weights.cols);
+	this->inertial_dEdW = Matrix(weights.rows, weights.cols);
 	this->correctionCoeffs = Matrix(weights.rows, weights.cols);
 
 	this->lyrRows = (unsigned int)floor((prevLyr->lyrRows + padding * 2 - winSideLen) / stride) + 1 ;
 	this->lyrCols = (unsigned int)floor((prevLyr->lyrCols + padding * 2 - winSideLen) / stride) + 1;
 	this->activations = Matrix(lyrRows, lyrCols);
-	//this->biases = Matrix::random(this->lyrRows, this->lyrCols);
+this->biases = Matrix::random(this->lyrRows, this->lyrCols);
+dEdB = Matrix(lyrRows, lyrCols);
+inertial_dEdB = Matrix(lyrRows, lyrCols);
 
 	this->dEdA = Matrix(lyrRows, lyrCols);
 	//this->activations = Matrix((prevLyr->lyrRows  - winSideLen) / stride , (prevLyr->lyrCols  - winSideLen) / stride);
@@ -65,7 +70,7 @@ void Convolutional::connect(Layer * prevLyr, unsigned int winSideLen, unsigned i
 void Convolutional::backProp()
 {
 	unsigned int i, j;
-	dEdW *= 0;
+	//dEdW *= 0;
 
 	for (i = 0; i < activations.rows; i++) {
 		for (j = 0; j < activations.cols; j++) {
@@ -90,15 +95,22 @@ void Convolutional::backProp()
 			zerosPadding *= 0;
 		}
 	}
-	/*for (i = 0; i < activations.rows; i++) {
-		for (j = 0; j < activations.cols; j++) {
-			(prevLyrDels.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(winSideLen * winSideLen, 1) += weights.transpose() * (postLyrDels(i, j));
-		}
-	}*/
-	zerosPadding *= 0;
+
 	//this->correctionCoeffs = 0.9*this->correctionCoeffs + learningRate*dEdW;
-	weights -= learningRate*dEdW; ;// this->correctionCoeffs;
-	//biases -= dEdA;
+	dEdB += dEdA;
+	
+	if (iter == iterPerEpoch) {
+		inertial_dEdB = (INERTIA * inertial_dEdB + learningRate*dEdB / iter);
+		biases -= inertial_dEdB;
+
+		inertial_dEdW = (INERTIA * inertial_dEdW + learningRate*dEdW / iter);
+		weights -= inertial_dEdW; ;// this->correctionCoeffs;
+		
+		dEdW *= 0;
+		dEdB *= 0;
+		iter = 0;
+	}
+	iter++;
 }
 
 void Convolutional::feedFwd() {
@@ -124,7 +136,7 @@ void Convolutional::feedFwd() {
 				cout << endl;
 			}*/
 			//cout << weights << endl;
-			this->activations(i, j) = (weights * (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(winSideLen* winSideLen, 1)).data[0];// +biases(i, j);
+			this->activations(i, j) = (weights * (inputs.block(i*stride, j*stride, winSideLen, winSideLen)).reshape(winSideLen* winSideLen, 1)).data[0] +biases(i, j);
 			//cout << this->activations << endl;
 		}
 	}

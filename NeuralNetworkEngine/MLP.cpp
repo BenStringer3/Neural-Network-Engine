@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "MLP.h"
-
+#include "cc.h"
 
 MLP::MLP(unsigned int rows, unsigned int cols, double learningRate)
 {
@@ -12,9 +12,14 @@ MLP::MLP(unsigned int rows, unsigned int cols, double learningRate)
 	this->activations = Matrix(rows, cols);
 	this->dEdA = Matrix(rows, cols);
 	this->biases = Matrix::random(rows, cols);
+	dEdB = Matrix(rows, cols);
+	inertial_dEdB = Matrix(rows, cols);
 	this->numPrevLyrsNrns = 0;
 	this->inputs = Matrix_pr(0,1 );
 	this->prevLyrDels = Matrix_pr(0,1 );
+
+	iter = 1;
+	iterPerEpoch = 30;
 }
 
 
@@ -26,6 +31,9 @@ void MLP::connect(Layer * prevLyr)
 {
 	this->numPrevLyrsNrns += prevLyr->lyrRows * prevLyr->lyrCols;
 	this->weights = Matrix::random(this->lyrRows * this-> lyrCols, this->numPrevLyrsNrns);
+	dEdW = Matrix(this->lyrRows * this->lyrCols, this->numPrevLyrsNrns);
+	inertial_dEdW = Matrix(this->lyrRows * this->lyrCols, this->numPrevLyrsNrns);
+
 	this->correctionCoeffs = Matrix(weights.rows, weights.cols);
 	//this->dEdW = Matrix(this->lyrRows * this->lyrCols, prevLyr->lyrRows * prevLyr->lyrCols);
 
@@ -43,10 +51,10 @@ void MLP::feedFwd() {
 }
 
 void MLP::backProp() {
-	Matrix dEdW(weights.rows, weights.cols);
+	//Matrix dEdW(weights.rows, weights.cols);
 	Matrix dels;
 
-	if (outputConnected) {
+	//if (outputConnected) {
 		//dels = (this->dEdA.reshape(this->lyrRows * this->lyrCols, 1)).cwiseProduct((sig_prime(&z)).reshape(this->lyrRows * this->lyrCols, 1));
 		//dels = (this->dEdA).cwiseProduct((sig_prime(&z)));
 		//cout << this->dEdA << endl;
@@ -55,19 +63,35 @@ void MLP::backProp() {
 		this->dEdA = this->dEdA.cwiseProduct(sig_prime(&z));
 		//cout << this->dEdA << endl;
 
-	}
-	else {
+	//}
+	//else {
 		//dels = (this->dEdA.reshape(this->lyrRows * this->lyrCols, 1));
-	}
+	//}
 
 	//dEdW = dels * inputs.transpose();
-	dEdW =  (this->dEdA.reshape(this->lyrRows * this->lyrCols, 1)) * inputs.transpose() ;
+	dEdW +=  (this->dEdA.reshape(this->lyrRows * this->lyrCols, 1)) * inputs.transpose() ;
 	//this->prevLyrDels = weights.transpose() * dels;
 	this->prevLyrDels = weights.transpose() * (this->dEdA.reshape(this->lyrRows * this->lyrCols, 1));
 	//this->correctionCoeffs = 0.9*this->correctionCoeffs + learningRate*dEdW;
-	weights -= learningRate*dEdW; //this->correctionCoeffs;
+	 //this->correctionCoeffs;
 	//biases -= dels.reshape(lyrRows, lyrCols);
-	biases -= this->dEdA;
+	
+	//biases -= this->dEdA;
+	//weights -= learningRate*dEdW;
+	dEdB += dEdA;
+
+	if (iter == iterPerEpoch) {
+		inertial_dEdB = (INERTIA * inertial_dEdB + learningRate*dEdB / iter);
+		biases -= inertial_dEdB;
+
+		inertial_dEdW = (INERTIA * inertial_dEdW + learningRate*dEdW / iter);
+		weights -= inertial_dEdW; ;// this->correctionCoeffs;
+
+		dEdW *= 0;
+		dEdB *= 0;
+		iter = 0;
+	}
+	iter++;
 }
 
 Matrix MLP::sig(Matrix *x) {

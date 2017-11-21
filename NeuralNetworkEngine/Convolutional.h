@@ -19,10 +19,16 @@ private:
 	unsigned int winSideLen; //assumes only square windows for now
 	unsigned int stride;
 	Matrix weights;
-	//Matrix biases;
-	Matrix dEdW;
+	Matrix biases;
+	//Matrix dEdW;
 	Layer * prevLyr;
 	Matrix zerosPadding;
 	double learningRate;
+	Matrix dEdW;
+	Matrix dEdB;
+	Matrix inertial_dEdW;
+	Matrix inertial_dEdB;
+	unsigned int iterPerEpoch;
+	unsigned int iter;
 };
 

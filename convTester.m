@@ -8,6 +8,8 @@
      t = connectNNE(6274 + 80);
       fits = [];
       res = [];
+      batchNum = 1;
+      
       datas = cell(1, 1);
       imgs = cell(1, 1);
       iter = 1;
@@ -21,6 +23,14 @@
  tim.BusyMode = 'drop';
  tim.TimerFcn = @(~, ~) evalin('base', 'readNNE');
  start(tim);
+ 
+ plotTimer = timer;
+  plotTimer.Period = 5;
+  plotTimer.StartDelay = 10;
+  plotTimer.ExecutionMode = 'fixedRate';
+  plotTimer.BusyMode = 'drop';
+  plotTimer.TimerFcn = @(~, ~) evalin('base', 'plotNow(fits(:,1), [fits(:,2), movmean(fits(:,2), 100)]); imgNow(255*datas{batchNum, 1}, 255*datas{batchNum, 2}, 255*datas{batchNum, 3} , 255*datas{batchNum, 4});');
+ start( plotTimer);
  
 try
 

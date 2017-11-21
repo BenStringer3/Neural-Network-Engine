@@ -18,15 +18,7 @@
 #include "ElemWise.h"
 #include "cc.h"
 
-#define IMG_DIM 28
-#define NUM_OUTS 10
-#define IMG_SIZE 784
-#define INERTIA 0.9
 
-#define NUM_CONVS 4
-#define NUM_BRANCHES 2
-#define NUM_LAYERS (2 + 3*NUM_CONVS*2 + 3*NUM_CONVS*NUM_BRANCHES)
-#define LEARNING_RATE 0.01
 
 using namespace std;
 
