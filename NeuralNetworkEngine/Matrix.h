@@ -112,6 +112,10 @@ public:
 
 	Matrix exp() const;
 
+	Matrix sqrt() const;
+
+	double sum() const;
+
 	static bool LU_decomp(Matrix& lower, Matrix& upper, const Matrix& mat);
 
 	static Matrix horzcat(const Matrix& ls, const Matrix& rs);

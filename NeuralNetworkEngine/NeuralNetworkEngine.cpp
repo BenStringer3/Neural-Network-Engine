@@ -28,9 +28,11 @@ typedef struct FitnessSendMsg {
 	char b;
 	uint32_t batchNum;
 	double fitness;
+	double learningRate;
 	FitnessSendMsg() {
 		b = 'b';
 		batchNum = 0;
+		learningRate = LEARNING_RATE;
 	}
 };
 #pragma pack(pop)
@@ -45,16 +47,22 @@ int main()
 	MLP input(IMG_DIM, IMG_DIM, LEARNING_RATE);
 	MLP classification1(5, 5, LEARNING_RATE);
 	MLP classification2(NUM_OUTS, 1, LEARNING_RATE);
-	Layer *layers[NUM_LAYERS];
 	int i, u, ii = 0, iii=0, iiii = 0;
 	int rightDigit, guessDigit;
-	Convolutional * conv[NUM_CONVS*2];
+	Convolutional * conv[NUM_CONVS];
 	Convolutional * conv2[NUM_CONVS*NUM_BRANCHES];
-	Pooling * pool[NUM_CONVS*2];
+	Pooling * pool[NUM_CONVS];
 	Pooling * pool2[NUM_CONVS*NUM_BRANCHES];
 	//ElemWise * bias[NUM_CONVS];
-	ElemWise * sig[NUM_CONVS*2];
+	ElemWise * sig[NUM_CONVS];
 	ElemWise * sig2[NUM_CONVS*NUM_BRANCHES];
+
+	Convolutional *conv3[NUM_CONVS*NUM_BRANCHES*NUM_BRANCHES];
+	Pooling *pool3[NUM_CONVS*NUM_BRANCHES*NUM_BRANCHES];
+	ElemWise *sig3[NUM_CONVS*NUM_BRANCHES*NUM_BRANCHES];
+
+	Layer *layers[NUM_LAYERS];
+
 
 	//server stuff
 	Matrix buffy(NUM_OUTS, 1);
@@ -63,6 +71,7 @@ int main()
 	char msgHeader[1];
 	char x[1] = { 'x' };
 	bool exitFlag = false;
+	bool resetFlag = false;
 	double lr[1];
 
 	for ( i = 0; i < NUM_CONVS; i++) {
@@ -96,44 +105,39 @@ int main()
 			conv2[i*NUM_BRANCHES + j]->connect(pool[i], 3, 1);
 			sig2[i*NUM_BRANCHES + j]->connect(conv2[i*NUM_BRANCHES + j]);
 			pool2[i*NUM_BRANCHES + j]->connect(sig2[i*NUM_BRANCHES + j], 2, 2);
-			classification1.connect(pool2[i*NUM_BRANCHES + j]);
+			//classification1.connect(pool2[i*NUM_BRANCHES + j]);
+
+			for (int k = 0; k < NUM_BRANCHES; k++) {
+				conv3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k] = new Convolutional(LEARNING_RATE);
+				sig3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k] = new ElemWise(Sig, LEARNING_RATE);
+				pool3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k] = new Pooling(Max);
+
+
+				layers[ii++] = conv3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k];
+				layers[ii++] = sig3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k];
+				layers[ii++] = pool3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k];
+
+				conv3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k]->connect(pool2[i*NUM_BRANCHES+j], 3, 1);
+				sig3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k]->connect(conv3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k]);
+				pool3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k]->connect(sig3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k], 2, 2);
+				classification1.connect(pool3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k]);
+			}
 		}
-
-
-		//classification1.connect(pool[i]);
 	}
-	for (i = NUM_CONVS; i < 2*NUM_CONVS; i++) {
 
-		conv[i] = new Convolutional(LEARNING_RATE);
-		//bias[i] = new ElemWise(Bias, LEARNING_RATE);
-		sig[i] = new ElemWise(Sig, LEARNING_RATE);
-		pool[i] = new Pooling(Max);
-
-
-		layers[ii++] = conv[i];
-		//layers[ii++] = bias[i];
-		layers[ii++] = sig[i];
-		layers[ii++] = pool[i];
-
-
-		conv[i]->connect(&input, 4, 1);
-		sig[i]->connect(conv[i]);
-		pool[i]->connect(sig[i], 2, 2);
-		classification1.connect(pool[i]);
-	}
 	classification2.connect(&classification1);
 	layers[ii++] = &classification1;
 	layers[ii++] = &classification2;
 
 
-	while (1) {
+	while (!exitFlag) {
 		//block until client connects
 		std::cout << "Neural Network Engine (NNE) Server is running\n";
 		NNE_helper.acceptor_.accept(NNE_helper.socket_);
 		std::cout << "Client has accepted connection. Awaiting message\n";
 		exitFlag = false;
 		//while the user hasn't sent the exit code or disconnected the client
-		while (!exitFlag) {
+		while (!exitFlag || !resetFlag) {
 			//listen for messages from the client 
 			if ((msgSize = NNE_helper.socket_.available()) > 0) {
 				//read the message header: a single char to determine message type

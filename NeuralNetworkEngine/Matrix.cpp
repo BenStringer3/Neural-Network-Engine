@@ -385,6 +385,27 @@ Matrix Matrix::exp() const
 	return result;
 }
 
+Matrix Matrix::sqrt() const
+{
+
+	int i;
+	Matrix result = *this;
+	for (i = 0; i < result.rows*result.cols; i++) {
+		result.data[i] = std::sqrt(this->data[i]);
+	}
+
+	return result;
+}
+
+double Matrix::sum() const {
+double result = 0;
+	for (int i = 0; i < this->rows*this->cols; i++) {
+		result += this->data[i];
+	}
+	return result;
+}
+
+
 const Matrix Matrix::block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width) const {
 	Matrix result;
 	int i, ii;

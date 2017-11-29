@@ -8,7 +8,9 @@ Convolutional::Convolutional(double learningRate)
 {
 	this->learningRate = learningRate;
 	iter = 1;
-	iterPerEpoch = 30;
+	iterPerEpoch = ITER_PER_EPOCH;
+	this->velocity_dEdW = 0;
+	this->velocity_dEdB = 0;
 }
 
 Convolutional::Convolutional()
@@ -40,12 +42,14 @@ void Convolutional::connect(Layer * prevLyr, unsigned int winSideLen, unsigned i
 	this->weights = Matrix::random(1, winSideLen*winSideLen);
 	this->dEdW = Matrix(weights.rows, weights.cols);
 	this->inertial_dEdW = Matrix(weights.rows, weights.cols);
-	this->correctionCoeffs = Matrix(weights.rows, weights.cols);
+	
+	//this->correctionCoeffs = Matrix(weights.rows, weights.cols);
 
 	this->lyrRows = (unsigned int)floor((prevLyr->lyrRows + padding * 2 - winSideLen) / stride) + 1 ;
 	this->lyrCols = (unsigned int)floor((prevLyr->lyrCols + padding * 2 - winSideLen) / stride) + 1;
 	this->activations = Matrix(lyrRows, lyrCols);
-this->biases = Matrix::random(this->lyrRows, this->lyrCols);
+//this->biases = Matrix::random(this->lyrRows, this->lyrCols);
+	INITIAL_BIASES
 dEdB = Matrix(lyrRows, lyrCols);
 inertial_dEdB = Matrix(lyrRows, lyrCols);
 
@@ -99,16 +103,24 @@ void Convolutional::backProp()
 	//this->correctionCoeffs = 0.9*this->correctionCoeffs + learningRate*dEdW;
 	dEdB += dEdA;
 	
-	if (iter == iterPerEpoch) {
-		inertial_dEdB = (INERTIA * inertial_dEdB + learningRate*dEdB / iter);
-		biases -= inertial_dEdB;
+	if (iter % iterPerEpoch == 0) {
+		inertial_dEdB = BETA1*inertial_dEdB + (1 - BETA1)*dEdB / iterPerEpoch;
+		velocity_dEdB = BETA2*velocity_dEdB + (1 - BETA2)*((dEdB.cwiseProduct(dEdB)).sum() / iterPerEpoch);
+		biases -=   LEARNING_RATE/sqrt(velocity_dEdB + E)*(sqrt(1-pow(BETA2, iter)) / (1 - pow(BETA1, iter))*inertial_dEdB);
 
-		inertial_dEdW = (INERTIA * inertial_dEdW + learningRate*dEdW / iter);
-		weights -= inertial_dEdW; ;// this->correctionCoeffs;
-		
+		inertial_dEdW = BETA1*inertial_dEdW + (1 - BETA1)*dEdW / iterPerEpoch;
+		velocity_dEdW = BETA2*velocity_dEdW + (1 - BETA2)*((dEdW.cwiseProduct(dEdW)).sum() / iterPerEpoch);
+		weights -= LEARNING_RATE / sqrt(velocity_dEdW + E)*(sqrt(1 - pow(BETA2, iter)) / (1 - pow(BETA1, iter))*inertial_dEdW);
+
+		//inertial_dEdB = (INERTIA * inertial_dEdB + learningRate*dEdB / iter);
+		//biases -= inertial_dEdB;
+
+		//inertial_dEdW = (INERTIA * inertial_dEdW + learningRate*dEdW / iter);
+		//weights -= inertial_dEdW; ;// this->correctionCoeffs;
+		//
 		dEdW *= 0;
 		dEdB *= 0;
-		iter = 0;
+		//iter = 0;
 	}
 	iter++;
 }

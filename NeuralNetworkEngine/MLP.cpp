@@ -19,7 +19,10 @@ MLP::MLP(unsigned int rows, unsigned int cols, double learningRate)
 	this->prevLyrDels = Matrix_pr(0,1 );
 
 	iter = 1;
-	iterPerEpoch = 30;
+	iterPerEpoch = ITER_PER_EPOCH;
+
+	this->velocity_dEdW = 0;
+	this->velocity_dEdB = 0;
 }
 
 
@@ -34,7 +37,7 @@ void MLP::connect(Layer * prevLyr)
 	dEdW = Matrix(this->lyrRows * this->lyrCols, this->numPrevLyrsNrns);
 	inertial_dEdW = Matrix(this->lyrRows * this->lyrCols, this->numPrevLyrsNrns);
 
-	this->correctionCoeffs = Matrix(weights.rows, weights.cols);
+	//this->correctionCoeffs = Matrix(weights.rows, weights.cols);
 	//this->dEdW = Matrix(this->lyrRows * this->lyrCols, prevLyr->lyrRows * prevLyr->lyrCols);
 
 	//this->inputs = (prevLyr->activations.reshape(this->numPrevLyrsNrns, 1)).block(0, 0, this->numPrevLyrsNrns, 1); //TODO: replace with pointsTo ??
@@ -80,16 +83,24 @@ void MLP::backProp() {
 	//weights -= learningRate*dEdW;
 	dEdB += dEdA;
 
-	if (iter == iterPerEpoch) {
-		inertial_dEdB = (INERTIA * inertial_dEdB + learningRate*dEdB / iter);
-		biases -= inertial_dEdB;
+	if (iter % iterPerEpoch == 0) {
+		inertial_dEdB = BETA1*inertial_dEdB + (1 - BETA1)*dEdB / iterPerEpoch;
+		velocity_dEdB = BETA2*velocity_dEdB + (1 - BETA2)*((dEdB.cwiseProduct(dEdB)).sum() / iterPerEpoch);
+		biases -= LEARNING_RATE / sqrt(velocity_dEdB + E)*(sqrt(1 - pow(BETA2, iter)) / (1 - pow(BETA1, iter))*inertial_dEdB);
 
-		inertial_dEdW = (INERTIA * inertial_dEdW + learningRate*dEdW / iter);
-		weights -= inertial_dEdW; ;// this->correctionCoeffs;
+		inertial_dEdW = BETA1*inertial_dEdW + (1 - BETA1)*dEdW / iterPerEpoch;
+		velocity_dEdW = BETA2*velocity_dEdW + (1 - BETA2)*((dEdW.cwiseProduct(dEdW)).sum() / iterPerEpoch);
+		weights -= LEARNING_RATE / sqrt(velocity_dEdW + E)*(sqrt(1 - pow(BETA2, iter)) / (1 - pow(BETA1, iter))*inertial_dEdW);
 
+		//inertial_dEdB = (INERTIA * inertial_dEdB + learningRate*dEdB / iter);
+		//biases -= inertial_dEdB;
+
+		//inertial_dEdW = (INERTIA * inertial_dEdW + learningRate*dEdW / iter);
+		//weights -= inertial_dEdW; ;// this->correctionCoeffs;
+		//
 		dEdW *= 0;
 		dEdB *= 0;
-		iter = 0;
+		//iter = 0;
 	}
 	iter++;
 }

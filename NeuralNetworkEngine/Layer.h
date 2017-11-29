@@ -16,8 +16,8 @@ public:
 protected:
 	Matrix_pr prevLyrDels;
 	Matrix_pr inputs;  //vector form
-	Matrix correctionCoeffs;
 
+	unsigned int iteration;
 	//Matrix dels;
 	//Matrix_pr dEdA;
 

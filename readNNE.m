@@ -9,7 +9,8 @@ try
             case 'b'
                 batchNum = fread(t, 1, 'uint32');            
                 fitness = fread(t, 1, 'double'); %0.4 ms
-                fits = [fits; batchNum, fitness]; %addsample(fits, 'Data', fitness, 'Time', batchNum); %1.5 ms
+                learningRate = fread(t, 1, 'double');
+                fits = [fits; batchNum, fitness, learningRate]; %addsample(fits, 'Data', fitness, 'Time', batchNum); %1.5 ms
                 %disp(sprintf('ML %d: %f\n', batchNum, fitness))
                 if mod(batchNum/(N - mod(N,100))*100, 10) == 0
                      disp([num2str(round(batchNum/N*100)) '% received'])

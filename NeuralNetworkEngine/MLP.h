@@ -23,6 +23,8 @@ private:
 	Matrix dEdB;
 	Matrix inertial_dEdW;
 	Matrix inertial_dEdB;
+	double velocity_dEdW;
+	double velocity_dEdB;
 	unsigned int iterPerEpoch;
 	unsigned int iter;
 };

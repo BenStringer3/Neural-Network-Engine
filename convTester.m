@@ -25,11 +25,11 @@
  start(tim);
  
  plotTimer = timer;
-  plotTimer.Period = 5;
+  plotTimer.Period = 35;
   plotTimer.StartDelay = 10;
   plotTimer.ExecutionMode = 'fixedRate';
   plotTimer.BusyMode = 'drop';
-  plotTimer.TimerFcn = @(~, ~) evalin('base', 'plotNow(fits(:,1), [fits(:,2), movmean(fits(:,2), 100)]); imgNow(255*datas{batchNum, 1}, 255*datas{batchNum, 2}, 255*datas{batchNum, 3} , 255*datas{batchNum, 4});');
+  plotTimer.TimerFcn = @(~, ~) evalin('base', 'plotNow(fits(:,1), [fits(:,2), movmean(fits(:,2), 100), fits(:,3)]); imgNow({datas{batchNum, :}}, (reshape(inputBatch(batchNum, :), [28 28]))'');'); %imgNow({255*datas{batchNum, 1}, 255*datas{batchNum, 2}, 255*datas{batchNum, 3} , 255*datas{batchNum, 4}, 255*datas{batchNum, 5}, 255*datas{batchNum, 6}, 255*datas{batchNum, 7} , 255*datas{batchNum, 8}, 255*datas{batchNum, 9}, 255*datas{batchNum, 10}, 255*datas{batchNum, 11} , 255*datas{batchNum, 4}});');
  start( plotTimer);
  
 try
@@ -50,7 +50,7 @@ try
      msg = typecast(msg, 'uint8');
      
 
-     while (length(datas) + 7) < n
+     while (length(datas) + 50) < n
         % pause(2);
      end
      sendNNE(t, msg);
