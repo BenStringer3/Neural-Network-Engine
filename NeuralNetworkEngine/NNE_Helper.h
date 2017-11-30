@@ -10,7 +10,8 @@ public:
 	//NNE_Helper(boost::asio::io_service& io_service);
 	NNE_Helper(boost::asio::io_service & io_service, short port);
 	~NNE_Helper();
-	void printMat(const Matrix & mat);
+	void printMat(const Matrix & mat, std::string name);
+	//void printMat(const Matrix & mat);
 
 	
 	boost::asio::ip::tcp::acceptor acceptor_;

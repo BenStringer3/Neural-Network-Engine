@@ -1,11 +1,11 @@
-function imgNow(datas, trueImg)
+function imgNow(datas, trueImg, results)
     persistent imgAxes;
     persistent fig1;
     persistent fig2;
     persistent barAxes;
     branches = 2;
     depth = 3;
-    numImgs = length(datas) - 1;
+    numImgs = length(datas);
     if isempty(imgAxes) || ~ishandle(imgAxes{1})
             fig2 =figure();
             barAxes = cell(1, 2);
@@ -55,7 +55,7 @@ function imgNow(datas, trueImg)
             end
         end
       %PLOT THE BAR PLOT
-      bar(barAxes{1}, 0:9, datas{end} * 100);
+      bar(barAxes{1}, 0:9, results * 100);
       set(barAxes{1}, 'ylim', [0 100]);
     imshow(trueImg, 'Parent', barAxes{2});
     title( barAxes{2}, 'original image');

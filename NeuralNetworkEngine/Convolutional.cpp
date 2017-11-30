@@ -11,6 +11,8 @@ Convolutional::Convolutional(double learningRate)
 	iterPerEpoch = ITER_PER_EPOCH;
 	this->velocity_dEdW = 0;
 	this->velocity_dEdB = 0;
+	layerType = convolutional;
+	tmpChildIter = 0;
 }
 
 Convolutional::Convolutional()

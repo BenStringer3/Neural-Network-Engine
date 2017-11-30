@@ -23,6 +23,11 @@ MLP::MLP(unsigned int rows, unsigned int cols, double learningRate)
 
 	this->velocity_dEdW = 0;
 	this->velocity_dEdB = 0;
+
+	layerType = mlp;
+	tmpChildIter = 0;
+	name = "";
+	
 }
 
 
@@ -36,7 +41,7 @@ void MLP::connect(Layer * prevLyr)
 	this->weights = Matrix::random(this->lyrRows * this-> lyrCols, this->numPrevLyrsNrns);
 	dEdW = Matrix(this->lyrRows * this->lyrCols, this->numPrevLyrsNrns);
 	inertial_dEdW = Matrix(this->lyrRows * this->lyrCols, this->numPrevLyrsNrns);
-
+	this->prevLyr = prevLyr;
 	//this->correctionCoeffs = Matrix(weights.rows, weights.cols);
 	//this->dEdW = Matrix(this->lyrRows * this->lyrCols, prevLyr->lyrRows * prevLyr->lyrCols);
 

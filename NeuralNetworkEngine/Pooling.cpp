@@ -7,6 +7,8 @@
 Pooling::Pooling(PoolingType type)
 {
 	poolingType = type;
+	layerType = pooling;
+	tmpChildIter = 0;
 }
 
 Pooling::Pooling()
@@ -155,7 +157,7 @@ void Pooling::feedFwd()
 			}
 		}
 	}
-	NNE_helper.printMat(activations);
+	//NNE_helper.printMat(activations);
 	//inputs *= 0;
 	dEdA *= 0;
 }

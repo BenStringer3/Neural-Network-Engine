@@ -1,6 +1,7 @@
 
 
 try
+ 
  while t.BytesAvailable > 0
      %disp('in readNNE and bytes available')
      t.ByteOrder = 'littleEndian';
@@ -21,12 +22,14 @@ try
                 cols = fread(t, 1, 'uint32');
                 id = fread(t, 1, 'uint32');
                 batchNum = fread(t, 1, 'uint32');
+                nameSize = fread(t, 1, 'uint32');
+                name = fread(t, nameSize, 'char');
                 mat = fread(t, rows*cols, 'double');
                 mat = (reshape(mat, rows, cols))';
-                datas{batchNum, id} = mat;
+                eval(sprintf('datas{batchNum}.%s = mat;', char(name)))
                 %res = [res; mat];
                 %image(myImgAx, mat);
-                clear rows cols id 
+                clear rows cols id nameSize name
 %              case 'r'
 %                 rows = fread(t, 1, 'uint32');
 %                 cols = fread(t, 1, 'uint32');

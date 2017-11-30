@@ -21,7 +21,7 @@ private:
 	unsigned int winSideLen; //assumes only square windows for now
 	unsigned int stride;
 	PoolingType poolingType;
-	Layer * prevLyr;
+	//Layer * prevLyr;
 	Matrix zerosPadding;
 };
 

@@ -21,7 +21,7 @@ private:
 	Matrix weights;
 	Matrix biases;
 	//Matrix dEdW;
-	Layer * prevLyr;
+	//Layer * prevLyr;
 	Matrix zerosPadding;
 	double learningRate;
 	Matrix dEdW;

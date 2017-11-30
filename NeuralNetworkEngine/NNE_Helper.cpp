@@ -14,6 +14,7 @@ typedef struct MatrixSendMsg {
 	uint32_t cols;
 	uint32_t id;
 	uint32_t batchNum;
+	uint32_t nameSize;
 	MatrixSendMsg() {
 		m = 'm';
 	}
@@ -30,7 +31,7 @@ NNE_Helper::NNE_Helper(boost::asio::io_service& io_service, short port)
 	//acceptor = boost::asio::ip::tcp::acceptor(io_service, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 4012));
 	//socket = boost::asio::ip::tcp::socket (io_service);
 
-	batchNum = 0;
+	batchNum = 1;
 	indices = 1;
 
 }
@@ -39,7 +40,7 @@ NNE_Helper::~NNE_Helper()
 {
 }
 
-void NNE_Helper::printMat( const Matrix & mat)
+void NNE_Helper::printMat( const Matrix & mat, std::string name)
 {
 	static MatrixSendMsg matSndMsg[1];
 
@@ -47,8 +48,10 @@ void NNE_Helper::printMat( const Matrix & mat)
 	matSndMsg->batchNum = batchNum;
 	matSndMsg->rows = mat.rows;
 	matSndMsg->cols = mat.cols;
+	matSndMsg->nameSize = name.size();
 
 	write(socket_, boost::asio::buffer(matSndMsg, sizeof(MatrixSendMsg)));
+	write(socket_, boost::asio::buffer(&name[0], name.size()));
 	write(socket_, boost::asio::buffer(mat.data.data(), mat.data.size() * sizeof(double)));
 
 	indices++;

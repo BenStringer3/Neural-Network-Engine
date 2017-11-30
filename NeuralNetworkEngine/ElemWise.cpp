@@ -10,6 +10,7 @@ ElemWise::ElemWise(ElemWiseType elemWiseType, double learningRate)
 	this->learningRate = learningRate;
 
 	this->gain = 1;
+	layerType = elemWise;
 }
 
 
@@ -19,6 +20,7 @@ ElemWise::~ElemWise()
 
 void ElemWise::connect(Layer * prevLyr)
 {
+	this->prevLyr = prevLyr;
 	this->lyrRows = prevLyr->lyrRows;
 	this->lyrCols = prevLyr->lyrCols;
 	this->activations = Matrix(this->lyrRows, this->lyrCols);

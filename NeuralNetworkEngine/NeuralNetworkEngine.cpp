@@ -47,7 +47,7 @@ int main()
 	MLP input(IMG_DIM, IMG_DIM, LEARNING_RATE);
 	MLP classification1(5, 5, LEARNING_RATE);
 	MLP classification2(NUM_OUTS, 1, LEARNING_RATE);
-	int i, u, ii = 0, iii=0, iiii = 0;
+	int i, u, ii = 0, iii = 0, iiii = 0;
 	int rightDigit, guessDigit;
 	Convolutional * conv[NUM_CONVS];
 	Convolutional * conv2[NUM_CONVS*NUM_BRANCHES];
@@ -73,8 +73,9 @@ int main()
 	bool exitFlag = false;
 	bool resetFlag = false;
 	double lr[1];
+	char _[1] = { '_' };
 
-	for ( i = 0; i < NUM_CONVS; i++) {
+	for (i = 0; i < NUM_CONVS; i++) {
 
 		conv[i] = new Convolutional(LEARNING_RATE);
 		//bias[i] = new ElemWise(Bias, LEARNING_RATE);
@@ -117,7 +118,7 @@ int main()
 				layers[ii++] = sig3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k];
 				layers[ii++] = pool3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k];
 
-				conv3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k]->connect(pool2[i*NUM_BRANCHES+j], 3, 1);
+				conv3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k]->connect(pool2[i*NUM_BRANCHES + j], 3, 1);
 				sig3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k]->connect(conv3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k]);
 				pool3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k]->connect(sig3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k], 2, 2);
 				classification1.connect(pool3[i*NUM_BRANCHES*NUM_BRANCHES + j*NUM_BRANCHES + k]);
@@ -128,6 +129,39 @@ int main()
 	classification2.connect(&classification1);
 	layers[ii++] = &classification1;
 	layers[ii++] = &classification2;
+
+	for (int i = 0; i < ii; i++)
+	{
+		layers[i]->name = layers[i]->prevLyr->name;
+		//strcpy_s(layers[i]->name, layers[i]->prevLyr->name);
+		//strcpy(layers[i]->name, layers[i]->prevLyr->name);
+
+		layers[i]->name.append("n_");
+		//strcat_s(layers[i]->name, _);
+		layers[i]->name.append(to_string(layers[i]->prevLyr->tmpChildIter));
+
+		//strcat_s(layers[i]->name, to_string(layers[i]->prevLyr->tmpChildIter).c_str());
+		layers[i]->prevLyr->tmpChildIter++;
+	}
+	for (int i = 0; i < ii; i++)
+	{
+		layers[i]->name.append("_");
+		//strcat_s(layers[i]->name, _);
+		switch (layers[i]->layerType) {
+		case mlp:
+			layers[i]->name.append("mlp");
+			//strcat_s(layers[i]->name, "mlp");
+			break;
+		case convolutional:
+			layers[i]->name.append("conv");
+			//strcat_s(layers[i]->name, "conv");
+			break;
+		case pooling:
+			layers[i]->name.append("pool");
+			//strcat_s(layers[i]->name, "pool");
+			break;
+		}
+	}
 
 
 	while (!exitFlag) {
@@ -143,6 +177,13 @@ int main()
 				//read the message header: a single char to determine message type
 				read(NNE_helper.socket_, boost::asio::buffer(msgHeader, 1));
 				switch (*msgHeader) {
+				case 'p':
+					for (ii = 0; ii < NUM_LAYERS; ii++) {
+						if (layers[ii]->layerType == pooling) {
+							NNE_helper.printMat(layers[ii]->activations, layers[ii]->name + "_act");
+						}
+					}
+					break;
 				case 'l':
 					read(NNE_helper.socket_, boost::asio::buffer(lr, sizeof(double)));
 					conv[3]->setLearningRate(lr[0]);
@@ -155,11 +196,12 @@ int main()
 					break;
 					//training data
 				case 't':
-
+					
 					//read in the inputBatch data
 					read(NNE_helper.socket_, boost::asio::buffer(input.activations.data, IMG_SIZE * sizeof(double)));
 					input.activations *= (1.0 / 255.0);
-					NNE_helper.newBatch();
+					//cout << input.activations << endl;
+					
 					for (ii = 0; ii < NUM_LAYERS; ii++) {
 						layers[ii]->feedFwd();
 						/*for (u = 0; u < layers[ii]->lyrCols*layers[ii]->lyrRows; u++) {
@@ -173,7 +215,8 @@ int main()
 					//}
 
 					
-					NNE_helper.printMat(classification2.activations);
+					NNE_helper.printMat(classification2.activations, "results");
+					
 					/*for (int i = 2; i < NUM_CONVS + 2; i++) {
 						printMat(socket, pool[i].activations, i, batchNum);
 					}*/
@@ -225,7 +268,7 @@ int main()
 							}
 						}
 					}
-					
+					NNE_helper.newBatch();
 					break;
 				case 'x':
 					exitFlag = true;
