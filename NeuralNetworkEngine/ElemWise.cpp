@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "ElemWise.h"
-
+#include "cc.h"
 
 ElemWise::ElemWise(ElemWiseType elemWiseType, double learningRate)
 {
@@ -9,8 +9,9 @@ ElemWise::ElemWise(ElemWiseType elemWiseType, double learningRate)
 
 	this->learningRate = learningRate;
 
-	this->gain = 1;
+	//this->gain = 1;
 	layerType = elemWise;
+	velocity = 0;
 }
 
 
@@ -27,10 +28,13 @@ void ElemWise::connect(Layer * prevLyr)
 	this->dEdA = Matrix(this->lyrRows, this->lyrCols);
 
 	if (elemWiseType == Sig) {
-		this->z = Matrix(this->lyrRows, this->lyrCols);
+		//this->z = Matrix(this->lyrRows, this->lyrCols);
 	}
 	else if (elemWiseType == Bias) {
-		this->bias = Matrix::random(this->lyrRows, this->lyrCols);
+		INITIAL_BIASES
+		//this->biases = Matrix::random(this->lyrRows, this->lyrCols);
+		this->correctionToBeAccumulated = Matrix(biases.rows, biases.cols);
+		this->inertia = Matrix(biases.rows, biases.cols);
 	}
 
 	this->inputs = Matrix_pr(this->lyrRows, this->lyrCols);
@@ -40,61 +44,56 @@ void ElemWise::connect(Layer * prevLyr)
 	//this->prevLyrDels = (prevLyr->dEdA.reshape(prevLyr->lyrRows * prevLyr->lyrCols, 1)).block(0, 0, prevLyr->lyrRows * prevLyr->lyrCols, 1);
 	//this->prevLyrDels = (prevLyr->dEdA.reshape(this->lyrRows, this->lyrCols)).block(0, 0, this->lyrRows, this->lyrCols);
 	this->prevLyrDels.pointTo(prevLyr->dEdA);
-	prevLyr->outputConnected = true;
+	//prevLyr->outputConnected = true;
 }
 
-void ElemWise::feedFwd()
+void ElemWise::calculateActivations()
 {
-	Matrix tmp(this->lyrRows, this->lyrCols);
+	//Matrix tmp(this->lyrRows, this->lyrCols);
 	switch (elemWiseType) {
-	case Gain:
-		this->activations = inputs * gain;// .reshape(this->lyrRows, this->lyrCols) * gain;
-		break;
 	case Bias:
-		tmp = (inputs + bias);
+		this->activations = (inputs + biases);
 		//this->activations = (inputs + bias);// .reshape(this->lyrRows, this->lyrCols);
-		for (int i = 0; i < this->lyrCols*this->lyrRows; i++) {
-			this->activations.data[i] = (inputs + bias).data[i];
-		}
+		/*for (int i = 0; i < this->lyrCols*this->lyrRows; i++) {
+			this->activations.data[i] = (inputs + biases).data[i];
+		}*/
 		break;
 	case Sig:
-		this->z = inputs;// .reshape(this->lyrRows, this->lyrCols);
-		//this->activations = (sig(&z));
-		tmp = (sig(&z));
-		for (int i = 0; i < this->lyrCols*this->lyrRows; i++) {
-			this->activations.data[i] = (tmp).data[i];
-		}
+		activations = sig(inputs);
+		//this->z = inputs;// .reshape(this->lyrRows, this->lyrCols);
+		////this->activations = (sig(&z));
+		//tmp = (sig(&z));
+		//for (int i = 0; i < this->lyrCols*this->lyrRows; i++) {
+		//	this->activations.data[i] = (tmp).data[i];
+		//}
 		break;
 	}
-	dEdA *= 0;
 }
 
 void ElemWise::backProp()
 {
 	switch (elemWiseType) {
-	case Gain:
-		this->prevLyrDels = Matrix::ones(this->lyrRows, this->lyrCols) * gain;
-		break;
 	case Bias:
 		this->prevLyrDels = dEdA;// .reshape(this->lyrRows, this->lyrCols);
-		this->bias -= dEdA;
+		correctionToBeAccumulated += dEdA;
+		applyCorrections(biases);
 		break;
 	case Sig:
-		this->prevLyrDels = dEdA.cwiseProduct(sig_prime(&z));// .reshape(this->lyrRows, this->lyrCols);
+		this->prevLyrDels = dEdA.cwiseProduct(activations.cwiseProduct(Matrix::ones(activations.rows, activations.cols) - activations));// .reshape(this->lyrRows, this->lyrCols);
 		break;
 	}
 }
 
-void ElemWise::setGain(double gain) {
-		this->gain = gain;
+
+
+Matrix ElemWise::sig(const Matrix_pr &x) {
+	Matrix ones = Matrix::ones(x.rows, x.cols);
+	return ones.cwiseQuotient((ones + (x*-1.0).exp()));
 }
 
-Matrix ElemWise::sig(Matrix *x) {
-	Matrix ones = Matrix::ones(x->rows, x->cols);
-	return ones.cwiseQuotient((ones + (-1.0 * (*x)).exp()));
-}
+//Matrix ElemWise::sig_prime() {
+//	//Matrix tmp = sig(x);
+//	return activations.cwiseProduct(Matrix::ones(activations.rows, activations.cols) - activations);
+//}
 
-Matrix ElemWise::sig_prime(Matrix *x) {
-	Matrix tmp = sig(x);
-	return tmp.cwiseProduct(Matrix::ones(x->rows, x->cols) - tmp);
-}
+

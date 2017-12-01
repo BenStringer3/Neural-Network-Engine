@@ -6,7 +6,10 @@
 
 #define SAFETY_CHECKS 0
 
+Matrix_pr* Matrix_pr::result_ = new Matrix_pr;//
+
 Matrix_pr::Matrix_pr() {
+	
 	rows = 0;
 	cols = 0;
 };
@@ -111,9 +114,13 @@ Matrix_pr& Matrix_pr::operator+=(const Matrix mat) {
 	return *this;
 }
 
-Matrix_pr Matrix_pr::block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width) {
-	Matrix_pr result(height, width);
+Matrix_pr & Matrix_pr::block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width) {
+	//Matrix_pr result(height, width);
 	int i, ii;
+	this->result_->rows = height;
+	this->result_->cols = width;
+	this->result_->data.resize(width*height);
+	
 #if SAFETY_CHECKS
 	if (height == 0 || width == 0) {
 		throw std::out_of_range("block must have non-zero height and width");
@@ -126,11 +133,11 @@ Matrix_pr Matrix_pr::block(unsigned int startRow, unsigned int startCol, unsigne
 		//result = Matrix_pr(height, width);
 		for (i = startRow; i < startRow + height; i++) {
 			for (ii = startCol; ii < startCol + width; ii++) {
-				result.data[(i - startRow)*result.cols + ii - startCol] = this->data[i*this->cols + ii];
+				(*result_).data[(i - startRow)*(*result_).cols + ii - startCol] = this->data[i*this->cols + ii];
 			}
 		}
 
-	return result;
+	return *result_;
 }
 
 Matrix_pr Matrix_pr::cwiseProduct(const Matrix_pr& mat) {
@@ -150,16 +157,19 @@ Matrix_pr Matrix_pr::cwiseProduct(const Matrix_pr& mat) {
 	return result;
 }
 
-Matrix Matrix_pr::operator*(const double scalar) const {
+Matrix& Matrix_pr::operator*(const double scalar) const {
 	int i, ii;
-	Matrix result(this->rows, this->cols);
+	//Matrix result(this->rows, this->cols);
+	Matrix::result_->rows = this->rows;
+	Matrix::result_->cols = this->cols;
+	Matrix::result_->data.resize(rows*cols);
 
 	for (i = 0; i < this->rows; i++) {
 		for (ii = 0; ii < this->cols; ii++) {
-			result.data[i*result.cols + ii] = *this->data[i*this->cols + ii] * scalar;
+			(*Matrix::result_).data[i*(*Matrix::result_).cols + ii] = *this->data[i*this->cols + ii] * scalar;
 		}
 	}
-	return result;
+	return (*Matrix::result_);
 }
 
 Matrix Matrix_pr::operator*(const Matrix_pr& mat) const {

@@ -7,8 +7,11 @@
 #define SAFETY_CHECKS 1
 
 #define RAND (-1 + ((double)rand() / RAND_MAX) * 2)
+Matrix* Matrix::result_ = new Matrix;
 
-Matrix::Matrix() {
+Matrix::Matrix()
+{
+	// = new Matrix;//
 	rows = 0;
 	cols = 0;
 }
@@ -99,6 +102,14 @@ Matrix& Matrix::operator-=(const Matrix mat) {
 				this->data[i*this->cols + ii] -= mat.data[i*this->cols + ii];
 			}
 		}
+	}
+	return *this;
+}
+
+Matrix & Matrix::operator/=(const double scalar)
+{
+	for (int i = 0; i < this->rows*this->cols; i++) {
+		this->data[i] /= scalar;
 	}
 	return *this;
 }
@@ -202,14 +213,17 @@ Matrix Matrix::operator*=(const double scalar) {
 
 Matrix Matrix::operator*(const double scalar) const {
 	int i, ii;
-	Matrix result = *this;
+	//Matrix result = *this;
+	result_->rows = this->rows;
+	result_->cols = this->cols;
+	result_->data.resize(rows*cols);
 
 	for (i = 0; i < this->rows; i++) {
 		for (ii = 0; ii < this->cols; ii++) {
-			result.data[i*result.cols + ii] = this->data[i*this->cols + ii] * scalar;
+			(*result_).data[i*(*result_).cols + ii] = this->data[i*this->cols + ii] * scalar;
 		}
 	}
-	return result;
+	return *result_;
 }
 
 Matrix Matrix::operator/(const double scalar) const {
@@ -327,17 +341,20 @@ void Matrix::transposeInPlace()
 
 }
 
-Matrix Matrix::transpose() const
+Matrix& Matrix::transpose() const
 {
 	int i, ii;
-	Matrix result(this->cols, this->rows);
+	this->result_->rows = this->cols;
+	this->result_->cols = this->rows;
+	this->result_->data.resize(rows*cols);
+	//Matrix result(this->cols, this->rows);
 
-	for (i = 0; i < result.rows; i++) {
-		for (ii = 0; ii < result.cols; ii++) {
-			result.data[i*result.cols + ii] = this->data[ii*this->cols + i];
+	for (i = 0; i < (*result_).rows; i++) {
+		for (ii = 0; ii < (*result_).cols; ii++) {
+			(*result_).data[i*(*result_).cols + ii] = this->data[ii*this->cols + i];
 		}
 	}
-	return result;
+	return *result_;
 }
 
 Matrix Matrix::cwiseProduct(const Matrix& mat) {
