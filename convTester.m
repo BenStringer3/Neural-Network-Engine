@@ -17,16 +17,16 @@
  end
  
  tim = timer;
- tim.Period = 0.15;
- tim.StartDelay = 0.15;
+ tim.Period = 0.25;
+ tim.StartDelay = 1;
  tim.ExecutionMode = 'fixedRate';
  tim.BusyMode = 'drop';
  tim.TimerFcn = @(~, ~) evalin('base', 'readNNE');
  start(tim);
  
  plotTimer = timer;
-  plotTimer.Period = 60;
-  plotTimer.StartDelay = 10;
+  plotTimer.Period = 30;
+  plotTimer.StartDelay = 5;
   plotTimer.ExecutionMode = 'fixedRate';
   plotTimer.BusyMode = 'drop';
   plotTimer.TimerFcn = @(~, ~) evalin('base', 'plotTimerCallback');%'sendNNE(t,uint8(''p'')); plotNow(fits(:,1), [fits(:,2), movmean(fits(:,2), 100), fits(:,3)]); imgNow({datas{batchNum, :}}, (reshape(inputBatch(batchNum, :), [28 28]))'');'); %imgNow({255*datas{batchNum, 1}, 255*datas{batchNum, 2}, 255*datas{batchNum, 3} , 255*datas{batchNum, 4}, 255*datas{batchNum, 5}, 255*datas{batchNum, 6}, 255*datas{batchNum, 7} , 255*datas{batchNum, 8}, 255*datas{batchNum, 9}, 255*datas{batchNum, 10}, 255*datas{batchNum, 11} , 255*datas{batchNum, 4}});');
@@ -35,7 +35,7 @@
 try
  msg = zeros(1, 784*8 + 1 + 10*8, 'uint8');
  msg(1) = uint8('t');
- sendNNE(t,uint8('p'));
+ %sendNNE(t,uint8('p'));
 %msg = uint8('t');
  for n = 1:N
      if mod(n/(N - mod(N,100))*100, 10) == 0
@@ -54,10 +54,21 @@ try
       end
 
     % msg = typecast(msg, 'uint8');
-
-     while (length(datas) + 50) < n
-        % pause(2);
-     end
+%     if (n - batchNum < 2) && tim.Period > 0.09
+%         stop(tim)
+%         tim.Period = tim.Period * 0.9;
+%         tim.StartDelay = tim.Period * 0.9;
+%         start(tim)
+%     elseif (n - batchNum > 45)
+%         stop(tim)
+%         tim.Period = tim.Period * 1.1;
+%         tim.StartDelay = tim.Period * 1.1;
+%         start(tim)
+%     end
+%disp(n - batchNum)
+%      while (length(datas) + 1000) < n
+%         % pause(2);
+%      end
      sendNNE(t, msg);
 
      
@@ -71,11 +82,14 @@ catch err
  rethrow(err);
 end
 
-tic();
+
+stop(tim);
+disp('completed sending')
      while length(datas) < N
-         pause(2);
+         readNNE;
      end
-     disp(num2str(toc()) );
+     plotTimerCallback;
+     sendNNE(t, uint8('x'));
   stop;   
   postPlotter;
 

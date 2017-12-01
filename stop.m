@@ -13,5 +13,8 @@ catch
 end
 
 sendNNE(t, uint8('x'));
+try
 fclose(t);
+catch
+end
 

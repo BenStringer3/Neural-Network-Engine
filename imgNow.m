@@ -1,4 +1,4 @@
-function imgNow(datas, trueImg, results)
+function imgNow(datas, trueImg, results, iter)
     persistent imgAxes;
     persistent fig1;
     persistent fig2;
@@ -22,20 +22,7 @@ function imgNow(datas, trueImg, results)
         for i = 1:ceil(sqrt(numImgs))
             for j = 1:ceil(sqrt(numImgs))
                 %[left bottom width height]
-               				imgAxes{ii} = subplot('position', [(j - 1)*w,  1 - i*w, w-0.01, w-0.01]); ii = ii+1;            
-%                 imgAxes{ii} = subplot('position', [(j - 1)*w,  1 - i*w, w, w]); ii = ii+1;
-%                 imgAxes{ii} = subplot('position', [(j - 1)*w,  1 - i*w, w, w]); ii = ii+1;
-%                 imgAxes{ii} = subplot('position', [(j - 1)*w,  1 - i*w, w, w]); ii = ii+1;
-%                 imgAxes{ii} = subplot('position', [(j - 1)*w,  1 - i*w, w, w]); ii = ii+1;
-%                 imgAxes{ii} = subplot('position', [(j - 1)*w,  1 - i*w, w, w]); ii = ii+1;
-%                 imgAxes{ii} = subplot('position', [(j - 1)*w,  1 - i*w, w, w]); ii = ii+1;
-%                 imgAxes{ii} = subplot('position', [(j - 1)*(w+w/2+w/4),  1 - i*w,             w - 0.01,      w - 0.01 ]); ii = ii+1;            
-%                 imgAxes{ii} = subplot('position', [(j - 1)*(w+w/2+w/4) + w,  1 - i*w + w/2,  w/2- 0.01,    w/2- 0.01]); ii = ii+1;
-%                 imgAxes{ii} = subplot('position', [(j - 1)*(w+w/2+w/4) + w,  1 - i*w,         w/2- 0.01,   w/2- 0.01]); ii = ii+1;
-%                 imgAxes{ii} = subplot('position', [(j - 1)*(w+w/2+w/4) + w + w/2,  1 - i*w + w*3/4,  w/4- 0.01,    w/4- 0.01]); ii = ii+1;
-%                 imgAxes{ii} = subplot('position', [(j - 1)*(w+w/2+w/4) + w + w/2,  1 - i*w + w/2,         w/4- 0.01,   w/4- 0.01]); ii = ii+1;
-%                 imgAxes{ii} = subplot('position', [(j - 1)*(w+w/2+w/4) + w + w/2,  1 - i*w + w/4,  w/4- 0.01,    w/4- 0.01]); ii = ii+1;
-%                 imgAxes{ii} = subplot('position', [(j - 1)*(w+w/2+w/4) + w + w/2,  1 - i*w,         w/4- 0.01,   w/4- 0.01]); ii = ii+1;
+               	imgAxes{ii} = subplot('position', [(j - 1)*w,  1 - i*w, w-0.01, w-0.01]); ii = ii+1;            
             end
         end
         for i = 1:length(imgAxes)
@@ -58,7 +45,7 @@ function imgNow(datas, trueImg, results)
       bar(barAxes{1}, 0:9, results * 100);
       set(barAxes{1}, 'ylim', [0 100]);
     imshow(trueImg, 'Parent', barAxes{2});
-    title( barAxes{2}, 'original image');
+    title( barAxes{2}, ['original image', num2str(iter)]);
     title( barAxes{1}, 'Network Results');
     ylabel( barAxes{1}, '% confidence');
     xlabel( barAxes{1}, 'Digit');
