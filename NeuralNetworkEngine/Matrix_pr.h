@@ -14,6 +14,7 @@ class Matrix_pr
 {
 	
 public:
+	static Matrix_pr * result_;
 	friend class Matrix;
 		unsigned int rows;
 		unsigned int cols;
@@ -43,7 +44,7 @@ public:
 
 		Matrix_pr& operator+=(const Matrix mat);
 
-		Matrix operator*(const double scalar) const;
+		Matrix& operator*(const double scalar) const;
 
 		Matrix operator*(const Matrix_pr & mat) const;
 
@@ -81,7 +82,7 @@ public:
 
 		static Matrix_pr horzcat(const Matrix_pr & ls, const Matrix_pr & rs);
 
-		Matrix_pr block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width);
+		Matrix_pr& block(unsigned int startRow, unsigned int startCol, unsigned int height, unsigned int width);
 
 		Matrix_pr cwiseProduct(const Matrix_pr& mat);
 };

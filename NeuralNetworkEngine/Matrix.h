@@ -14,6 +14,8 @@ class Matrix
 
 public:
 
+	static Matrix * result_;
+
 	unsigned int rows;
 
 	unsigned int cols;
@@ -41,6 +43,8 @@ public:
 	Matrix operator+(const Matrix & mat) const;
 
 	Matrix& operator-=(const Matrix mat);
+
+	Matrix& operator/=(const double scalar);
 
 	Matrix& operator-=(const Matrix_pr& mat);
 
@@ -104,7 +108,7 @@ public:
 
 	void transposeInPlace();
 
-	Matrix transpose() const;
+	Matrix& transpose() const;
 
 	Matrix cwiseProduct(const Matrix& mat);
 
@@ -133,4 +137,6 @@ public:
 	Matrix_pr diagonal();
 
 	Matrix_pr reshape(unsigned int rows, unsigned int cols);
+
+
 };

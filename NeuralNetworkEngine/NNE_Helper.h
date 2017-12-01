@@ -11,6 +11,8 @@ public:
 	NNE_Helper(boost::asio::io_service & io_service, short port);
 	~NNE_Helper();
 	void printMat(const Matrix & mat, std::string name);
+	void printMat(const float & scalar, std::string name);
+	//void printMat(const double & mat, std::string name);
 	//void printMat(const Matrix & mat);
 
 	
@@ -19,9 +21,24 @@ public:
 	//boost::asio::ip::tcp::socket & socket();
 
 	void newBatch();
-private:
 	unsigned int batchNum;
+private:
+#pragma pack(push, 1)
+	typedef struct MatrixSendMsg {
+		char m;
+		uint32_t rows;
+		uint32_t cols;
+		uint32_t id;
+		uint32_t batchNum;
+		uint32_t nameSize;
+		MatrixSendMsg() {
+			m = 'm';
+		}
+	};
+#pragma pack(pop)
+	
 	unsigned int indices;
+	MatrixSendMsg matSndMsg[1];
 	//boost::asio::io_service& io_service_;
 	
 };

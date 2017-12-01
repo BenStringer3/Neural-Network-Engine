@@ -2,7 +2,6 @@
 #include "Layer.h"
 
 enum ElemWiseType {
-	Gain,
 	Bias,
 	Sig
 };
@@ -14,23 +13,22 @@ public:
 	ElemWise(ElemWiseType elemWiseType, double learningRate);
 	~ElemWise();
 	void connect(Layer * prevLyr);
-	void feedFwd();
-	void backProp();
-	void setGain(double gain);
+	//void feedFwd();
+	virtual void backProp();
 private:
 	ElemWiseType elemWiseType;
 
-	
-	//gain mode
-	double gain;
 
 	//bias mode
-	Matrix bias;
+	Matrix biases;
 	double learningRate;
 
 	//sig mode
-	Matrix z;
-	Matrix sig(Matrix * x);
-	Matrix sig_prime(Matrix * x);
+	//Matrix z;
+	Matrix sig(const Matrix_pr &x);
+	//Matrix sig_prime();
+
+	virtual void calculateActivations();
+
 };
 
